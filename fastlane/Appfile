@@ -1,0 +1,10 @@
+# Appfile configuration
+
+# Android
+package_name("Inurum.Technology.EldTruckTrace")
+
+# iOS
+app_identifier("Inurum.Technology.EldTruckTrace")
+ apple_id("serialcoder90@gmail.com")
+itc_team_id("6758390304")
+# team_id("ABCDEF1234")

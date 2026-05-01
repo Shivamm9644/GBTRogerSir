@@ -1,0 +1,74 @@
+# Fastlane Configuration Fastfile
+
+default_platform(:android)
+
+platform :android do
+  desc "Upload APK to Google Play Store"
+  lane :android_upload do |options|
+    apk_path = options[:apk]
+    track = options[:track] || 'internal' # Default to internal, can be 'production', 'beta', 'alpha'
+    
+    # Validate file exists
+    unless File.exist?(apk_path)
+      UI.error("APK file not found at path: #{apk_path}")
+      next
+    end
+
+    UI.message("--- Fastlane: Starting Android Upload for #{apk_path} on track: #{track} ---")
+    
+    # Dynamic package_name injection for Multi-Tenant Support
+    # Priority: ENV variable > Appfile
+    package_name = ENV["FASTLANE_APP_IDENTIFIER"] || CredentialsManager::AppfileConfig.try_fetch_value(:package_name)
+    
+    UI.message("Package Name: #{package_name}")
+
+    begin
+      supply(
+        apk: apk_path,
+        track: track,
+        package_name: package_name,
+        json_key: "google_play_key.json",
+        skip_upload_metadata: true,
+        skip_upload_images: true,
+        skip_upload_screenshots: true
+      )
+      UI.success("Successfully uploaded Android artifact to Google Play Store!")
+    rescue => e
+      UI.error("Android Upload Failed: #{e.message}")
+      raise e
+    end
+  end
+end
+
+platform :ios do
+  desc "Upload IPA to App Store Connect"
+  lane :ios_upload do |options|
+    ipa_path = options[:ipa]
+    
+    unless File.exist?(ipa_path)
+      UI.error("IPA file not found at path: #{ipa_path}")
+      next
+    end
+
+    UI.message("--- Fastlane: Starting iOS Upload for #{ipa_path} ---")
+
+    # Dynamic app_identifier injection
+    app_id = ENV["FASTLANE_APP_IDENTIFIER"] || CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+
+    begin
+      # Deliver handles the upload
+      deliver(
+        ipa: ipa_path,
+        app_identifier: app_id,
+        skip_screenshots: true,
+        skip_metadata: true,
+        force: true, # Skips HTML report verification
+        run_precheck_before_submit: false
+      )
+      UI.success("Successfully uploaded iOS artifact to App Store Connect!")
+    rescue => e
+      UI.error("iOS Upload Failed: #{e.message}")
+      raise e
+    end
+  end
+end

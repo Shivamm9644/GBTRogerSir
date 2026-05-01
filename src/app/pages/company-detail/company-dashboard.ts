@@ -34,8 +34,8 @@ interface Client {
   timezone: string;
   street: string;
   city: string;
-  countryName: string[];
-  stateName: string[];
+  countryName?: string[];
+  stateName?: string[];
   zipcode: number;
   complianceMode: string;
   vehicleMotionThresold: string;
@@ -47,10 +47,10 @@ interface Client {
   allowIfta: string;
   exemptDriver: string;
   shortHaulException: string;
-  cycleUsaName: string[];
-  cargoTypeName: string[];
-  restartName: string[];
-  restBreakName: string[];
+  cycleUsaName?: string[];
+  cargoTypeName?: string[];
+  restartName?: string[];
+  restBreakName?: string[];
   subscriptionEndTime: number;
   graceTime: number;
 }
@@ -471,8 +471,8 @@ interface Vehicle {
                         <p class="text-xs text-slate-500 mt-1 flex items-center gap-1">
                           <span class="material-symbols-outlined text-[13px]">location_on</span>
                           {{ cl.street }}{{ cl.city ? ', ' + cl.city : '' }}
-                          {{ cl.stateName?.[0] ? ', ' + cl.stateName[0] : '' }}
-                          {{ cl.countryName?.[0] ? ', ' + cl.countryName[0] : '' }}
+                          {{ cl.stateName?.[0] ? ', ' + cl.stateName?.[0] : '' }}
+                          {{ cl.countryName?.[0] ? ', ' + cl.countryName?.[0] : '' }}
                           · {{ cl.zipcode }}
                         </p>
 
@@ -489,13 +489,13 @@ interface Vehicle {
                           @if (cl.cycleUsaName?.[0]) {
                             <span class="inline-flex items-center gap-1 text-[11px] text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">
                               <span class="material-symbols-outlined text-[12px]">replay</span>
-                              {{ cl.cycleUsaName[0] }}
+                              {{ cl.cycleUsaName?.[0] }}
                             </span>
                           }
                           @if (cl.cargoTypeName?.[0]) {
                             <span class="inline-flex items-center gap-1 text-[11px] text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">
                               <span class="material-symbols-outlined text-[12px]">inventory_2</span>
-                              {{ cl.cargoTypeName[0] }}
+                              {{ cl.cargoTypeName?.[0] }}
                             </span>
                           }
                           @if (cl.vehicleMotionThresold) {
@@ -756,21 +756,21 @@ interface Vehicle {
 })
 export class CompanyDashboardComponent {
   private companyService = inject(CompanyService);
-  private http           = inject(HttpClient);
-  private cdr            = inject(ChangeDetectorRef);
+  private http = inject(HttpClient);
+  private cdr = inject(ChangeDetectorRef);
 
   get company() { return this.companyService.currentCompany(); }
 
   analytics: AnalyticsResult | null = null;
   loading = false;
-  error   = '';
+  error = '';
 
   // ── Drivers panel ─────────────────────────────────────────────────────────
-  driversOpen    = false;
+  driversOpen = false;
   driversLoading = false;
-  driversError   = '';
+  driversError = '';
   drivers: Driver[] = [];
-  driverSearch   = '';
+  driverSearch = '';
 
   get filteredDrivers(): Driver[] {
     const q = this.driverSearch.toLowerCase().trim();
@@ -785,11 +785,11 @@ export class CompanyDashboardComponent {
   }
 
   // ── Vehicles panel ────────────────────────────────────────────────────────
-  vehiclesOpen    = false;
+  vehiclesOpen = false;
   vehiclesLoading = false;
-  vehiclesError   = '';
+  vehiclesError = '';
   vehicles: Vehicle[] = [];
-  vehicleSearch   = '';
+  vehicleSearch = '';
 
   get filteredVehicles(): Vehicle[] {
     const q = this.vehicleSearch.toLowerCase().trim();
@@ -806,11 +806,11 @@ export class CompanyDashboardComponent {
   }
 
   // ── Clients panel ──────────────────────────────────────────────────────────
-  clientsOpen    = false;
+  clientsOpen = false;
   clientsLoading = false;
-  clientsError   = '';
+  clientsError = '';
   clients: Client[] = [];
-  clientSearch   = '';
+  clientSearch = '';
 
   get filteredClients(): Client[] {
     const q = this.clientSearch.toLowerCase().trim();
@@ -880,8 +880,8 @@ export class CompanyDashboardComponent {
 
   // ── Analytics ─────────────────────────────────────────────────────────────
   fetchAnalytics(adminUrl: string) {
-    this.loading   = true;
-    this.error     = '';
+    this.loading = true;
+    this.error = '';
     this.analytics = null;
     this.cdr.detectChanges();
 
@@ -893,7 +893,7 @@ export class CompanyDashboardComponent {
         this.cdr.detectChanges();
       },
       error: () => {
-        this.error   = 'Could not reach the server.';
+        this.error = 'Could not reach the server.';
         this.loading = false;
         this.cdr.detectChanges();
       }
@@ -919,14 +919,14 @@ export class CompanyDashboardComponent {
   // ── Card click dispatcher ─────────────────────────────────────────────────
   onCardClick(card: any) {
     if (!card.clickable) return;
-    if (card.key === 'totalDrivers')   this.openDrivers();
-    if (card.key === 'totalVehicles')   this.openVehicles();
-    if (card.key === 'totalCompanies')  this.openClients();
+    if (card.key === 'totalDrivers') this.openDrivers();
+    if (card.key === 'totalVehicles') this.openVehicles();
+    if (card.key === 'totalCompanies') this.openClients();
   }
 
   // ── Drivers Panel ─────────────────────────────────────────────────────────
   openDrivers() {
-    this.driversOpen  = true;
+    this.driversOpen = true;
     this.driverSearch = '';
     this.cdr.detectChanges();
     this.loadDrivers();
@@ -938,19 +938,19 @@ export class CompanyDashboardComponent {
     const c = this.companyService.currentCompany();
     if (!c?.admin_url) return;
     this.driversLoading = true;
-    this.driversError   = '';
-    this.drivers        = [];
+    this.driversError = '';
+    this.drivers = [];
     this.cdr.detectChanges();
 
     this.http.post<any>(`${c.admin_url}/eld_log/master/view_driver_information`, { employeeId: '0' }).subscribe({
       next: (res) => {
-        this.drivers        = res?.status === 'SUCCESS' && Array.isArray(res?.result) ? res.result : [];
+        this.drivers = res?.status === 'SUCCESS' && Array.isArray(res?.result) ? res.result : [];
         if (!this.drivers.length && res?.status !== 'SUCCESS') this.driversError = res?.message ?? 'No drivers found.';
         this.driversLoading = false;
         this.cdr.detectChanges();
       },
       error: () => {
-        this.driversError   = `Could not load drivers.`;
+        this.driversError = `Could not load drivers.`;
         this.driversLoading = false;
         this.cdr.detectChanges();
       }
@@ -959,8 +959,8 @@ export class CompanyDashboardComponent {
 
   // ── Clients Panel ─────────────────────────────────────────────────────────
   openClients() {
-    this.clientsOpen   = true;
-    this.clientSearch  = '';
+    this.clientsOpen = true;
+    this.clientSearch = '';
     this.cdr.detectChanges();
     this.loadClients();
   }
@@ -971,19 +971,19 @@ export class CompanyDashboardComponent {
     const c = this.companyService.currentCompany();
     if (!c?.admin_url) return;
     this.clientsLoading = true;
-    this.clientsError   = '';
-    this.clients        = [];
+    this.clientsError = '';
+    this.clients = [];
     this.cdr.detectChanges();
 
     this.http.post<any>(`${c.admin_url}/eld_log/master/view_client`, { clientId: 0 }).subscribe({
       next: (res) => {
-        this.clients        = res?.status === 'SUCCESS' && Array.isArray(res?.result) ? res.result : [];
+        this.clients = res?.status === 'SUCCESS' && Array.isArray(res?.result) ? res.result : [];
         if (!this.clients.length && res?.status !== 'SUCCESS') this.clientsError = res?.message ?? 'No clients found.';
         this.clientsLoading = false;
         this.cdr.detectChanges();
       },
       error: () => {
-        this.clientsError   = 'Could not load client/company data.';
+        this.clientsError = 'Could not load client/company data.';
         this.clientsLoading = false;
         this.cdr.detectChanges();
       }
@@ -997,8 +997,8 @@ export class CompanyDashboardComponent {
 
   // ── Vehicles Panel ────────────────────────────────────────────────────────
   openVehicles() {
-    this.vehiclesOpen   = true;
-    this.vehicleSearch  = '';
+    this.vehiclesOpen = true;
+    this.vehicleSearch = '';
     this.cdr.detectChanges();
     this.loadVehicles();
   }
@@ -1009,8 +1009,8 @@ export class CompanyDashboardComponent {
     const c = this.companyService.currentCompany();
     if (!c?.admin_url) return;
     this.vehiclesLoading = true;
-    this.vehiclesError   = '';
-    this.vehicles        = [];
+    this.vehiclesError = '';
+    this.vehicles = [];
     this.cdr.detectChanges();
 
     this.http.post<any>(
@@ -1018,13 +1018,13 @@ export class CompanyDashboardComponent {
       { vehicleId: 0, clientId: 0 }
     ).subscribe({
       next: (res) => {
-        this.vehicles        = res?.status === 'SUCCESS' && Array.isArray(res?.result) ? res.result : [];
+        this.vehicles = res?.status === 'SUCCESS' && Array.isArray(res?.result) ? res.result : [];
         if (!this.vehicles.length && res?.status !== 'SUCCESS') this.vehiclesError = res?.message ?? 'No vehicles found.';
         this.vehiclesLoading = false;
         this.cdr.detectChanges();
       },
       error: () => {
-        this.vehiclesError   = `Could not load vehicles.`;
+        this.vehiclesError = `Could not load vehicles.`;
         this.vehiclesLoading = false;
         this.cdr.detectChanges();
       }
@@ -1033,7 +1033,7 @@ export class CompanyDashboardComponent {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   getAvatarColor(name: string): string {
-    const palette = ['#3b82f6','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899','#14b8a6','#f97316'];
+    const palette = ['#3b82f6', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#f97316'];
     return palette[(name?.charCodeAt(0) ?? 0) % palette.length];
   }
 }

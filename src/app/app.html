@@ -2,47 +2,63 @@
 
     @if (isLoggedIn) {
     <!-- ── Sidebar ──────────────────────────────────────────────────────── -->
-    <aside class="w-64 border-r border-primary/10 bg-white dark:bg-slate-900 hidden md:flex flex-col shrink-0">
+    <aside
+        class="w-[84px] hover:w-64 transition-all duration-300 ease-in-out group border-r border-primary/10 bg-white dark:bg-slate-900 hidden md:flex flex-col shrink-0 overflow-x-hidden relative z-50">
         <!-- Logo -->
-        <div class="px-5 py-4 flex items-center">
+        <div class="px-5 py-6 flex items-center shrink-0">
+            <!-- Icon only when collapsed -->
+            <div
+                class="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-black text-xl group-hover:hidden shrink-0">
+                G
+            </div>
+            <!-- Full Logo when expanded -->
             <img src="gbt-logo-light.png" alt="GBT Admin"
-                class="h-16 w-auto object-contain block dark:hidden" />
+                class="h-10 w-auto object-contain hidden transition-opacity duration-300 group-hover:block dark:group-hover:hidden" />
             <img src="gbt-logo-dark.png" alt="GBT Admin"
-                class="h-16 w-auto object-contain hidden dark:block" />
+                class="h-10 w-auto object-contain hidden dark:group-hover:block" />
         </div>
 
         <!-- Nav -->
-        <nav class="flex-1 overflow-y-auto px-4 space-y-8 py-4">
+        <nav class="flex-1 overflow-y-auto overflow-x-hidden px-4 space-y-8 py-4 no-scrollbar">
             <div>
                 <a routerLink="/dashboard" routerLinkActive="text-primary bg-primary/10"
                     [routerLinkActiveOptions]="{exact:true}"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400">
-                    <span class="material-symbols-outlined">dashboard</span>
-                    <span class="text-sm font-semibold">Dashboard</span>
+                    class="flex items-center px-4 py-3 rounded-xl cursor-pointer transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 relative">
+                    <span class="material-symbols-outlined text-[22px] shrink-0">dashboard</span>
+                    <span
+                        class="ml-4 text-sm font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">Dashboard</span>
                 </a>
             </div>
 
             <div>
-                <p class="px-3 mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Setup</p>
+                <p
+                    class="px-4 mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
+                    Setup</p>
                 <div class="space-y-1">
                     @for (item of navSetup; track item.label) {
                     <a [routerLink]="item.route" routerLinkActive="text-primary bg-primary/10"
-                        class="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400">
-                        <span class="material-symbols-outlined text-[20px]">{{ item.icon }}</span>
-                        <span class="text-sm font-medium">{{ item.label }}</span>
+                        class="flex items-center px-4 py-3 rounded-xl cursor-pointer transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 relative">
+                        <span class="material-symbols-outlined text-[22px] shrink-0">{{ item.icon }}</span>
+                        <span
+                            class="ml-4 text-sm font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">{{
+                            item.label }}</span>
                     </a>
                     }
                 </div>
             </div>
 
             <div>
-                <p class="px-3 mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Customers</p>
+                <p
+                    class="px-4 mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
+                    Customers</p>
                 <div class="space-y-1">
                     @for (item of navCustomers; track item.label) {
                     <a [routerLink]="item.route" routerLinkActive="text-primary bg-primary/10"
-                        class="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400">
-                        <span class="material-symbols-outlined text-[20px]">{{ item.icon }}</span>
-                        <span class="text-sm font-medium">{{ item.label }}</span>
+                        class="flex items-center px-4 py-3 rounded-xl cursor-pointer transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 relative">
+                        <span class="material-symbols-outlined text-[22px] shrink-0">{{ item.icon }}</span>
+                        <span
+                            class="ml-4 text-sm font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">{{
+                            item.label }}</span>
                     </a>
                     }
                 </div>
@@ -50,28 +66,31 @@
         </nav>
 
         <!-- User + Logout -->
-        <div class="p-4 border-t border-primary/10 space-y-2">
+        <div class="p-4 border-t border-primary/10 space-y-2 shrink-0">
             <!-- User info -->
-            <div class="flex items-center gap-3 p-2 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                <div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+            <div
+                class="flex items-center p-2 bg-slate-50 dark:bg-slate-800 rounded-xl overflow-hidden cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0">
                     <span class="text-white text-xs font-black">{{ getInitials(currentUser.name) }}</span>
                 </div>
-                <div class="flex-1 min-w-0">
+                <div
+                    class="ml-3 min-w-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap flex-1">
                     <p class="text-sm font-semibold truncate text-slate-900 dark:text-white">{{ currentUser.name }}</p>
                     <p class="text-xs text-slate-500 truncate">{{ currentUser.role }}</p>
                 </div>
             </div>
 
             <!-- Logout button -->
-            <button (click)="logout()"
-                class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold
+            <button (click)="logout()" class="w-full flex items-center px-4 py-3 rounded-xl text-sm font-semibold
                        text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20
-                       border border-transparent hover:border-red-200 dark:hover:border-red-800
-                       transition-all cursor-pointer group">
-                <span class="material-symbols-outlined text-[20px] group-hover:translate-x-0.5 transition-transform">
+                       transition-all cursor-pointer group/btn">
+                <span
+                    class="material-symbols-outlined text-[22px] shrink-0 group-hover/btn:translate-x-1 transition-transform">
                     logout
                 </span>
-                Sign Out
+                <span
+                    class="ml-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">Sign
+                    Out</span>
             </button>
         </div>
     </aside>
@@ -91,10 +110,12 @@
                     <span class="text-xs font-bold text-green-700 dark:text-green-400">SERVERS HEALTHY</span>
                 </div>
                 @if (auth.currentUser()?.last_login_fmt) {
-                    <div class="hidden md:flex items-center gap-2 text-xs text-slate-500 px-3 py-1 bg-slate-50 dark:bg-slate-800/50 rounded-full border border-slate-200 dark:border-slate-700/50">
-                        <span class="material-symbols-outlined text-[14px]">history</span>
-                        <span>Last Login: <span class="font-semibold text-slate-700 dark:text-slate-300">{{ auth.currentUser()?.last_login_fmt }}</span></span>
-                    </div>
+                <div
+                    class="hidden md:flex items-center gap-2 text-xs text-slate-500 px-3 py-1 bg-slate-50 dark:bg-slate-800/50 rounded-full border border-slate-200 dark:border-slate-700/50">
+                    <span class="material-symbols-outlined text-[14px]">history</span>
+                    <span>Last Login: <span class="font-semibold text-slate-700 dark:text-slate-300">{{
+                            auth.currentUser()?.last_login_fmt }}</span></span>
+                </div>
                 }
             </div>
             <div class="flex items-center gap-4">
@@ -124,8 +145,7 @@
                         <span class="material-symbols-outlined">settings</span>
                     </button>
                     <!-- Header logout button -->
-                    <button (click)="logout()"
-                        title="Sign Out"
+                    <button (click)="logout()" title="Sign Out"
                         class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg cursor-pointer transition-colors">
                         <span class="material-symbols-outlined">logout</span>
                     </button>

@@ -15,8 +15,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 include_once '../config/database.php';
 
 $database = new Database();
-$db       = $database->getConnection();
-$method   = $_SERVER['REQUEST_METHOD'];
+$db = $database->getConnection();
+$method = $_SERVER['REQUEST_METHOD'];
 
 // ── Route Handlers ─────────────────────────────────────────────────────────────
 switch ($method) {
@@ -24,20 +24,20 @@ switch ($method) {
     // ── GET: List all companies ──────────────────────────────────────────────
     case 'GET':
         $query = "SELECT * FROM companies ORDER BY created_at DESC";
-        $stmt  = $db->prepare($query);
+        $stmt = $db->prepare($query);
         $stmt->execute();
         $companies = $stmt->fetchAll();
 
         echo json_encode([
             "status" => "success",
-            "count"  => count($companies),
-            "data"   => $companies
+            "count" => count($companies),
+            "data" => $companies
         ]);
         break;
 
     // ── POST: Create new company ─────────────────────────────────────────────
     case 'POST':
-        $raw  = file_get_contents("php://input");
+        $raw = file_get_contents("php://input");
         $data = json_decode($raw, true);
 
         if (!$data) {
@@ -71,17 +71,18 @@ switch ($method) {
         }
 
         $query = "INSERT INTO companies
-                    (company_name, owner_name, owner_mobile, owner_email, address, admin_url)
+                    (company_name, package_name, owner_name, owner_mobile, owner_email, address, admin_url)
                   VALUES
-                    (:company_name, :owner_name, :owner_mobile, :owner_email, :address, :admin_url)";
+                    (:company_name, :package_name, :owner_name, :owner_mobile, :owner_email, :address, :admin_url)";
 
         $stmt = $db->prepare($query);
         $stmt->bindValue(':company_name', trim($data['company_name']));
-        $stmt->bindValue(':owner_name',   trim($data['owner_name']));
+        $stmt->bindValue(':package_name', trim($data['package_name'] ?? ''));
+        $stmt->bindValue(':owner_name', trim($data['owner_name']));
         $stmt->bindValue(':owner_mobile', trim($data['owner_mobile']));
-        $stmt->bindValue(':owner_email',  trim($data['owner_email']));
-        $stmt->bindValue(':address',      trim($data['address'] ?? ''));
-        $stmt->bindValue(':admin_url',    rtrim(trim($data['admin_url']), '/'));
+        $stmt->bindValue(':owner_email', trim($data['owner_email']));
+        $stmt->bindValue(':address', trim($data['address'] ?? ''));
+        $stmt->bindValue(':admin_url', rtrim(trim($data['admin_url']), '/'));
 
         if ($stmt->execute()) {
             $newId = $db->lastInsertId();
@@ -93,9 +94,9 @@ switch ($method) {
 
             http_response_code(201);
             echo json_encode([
-                "status"  => "success",
+                "status" => "success",
                 "message" => "Company created successfully",
-                "data"    => $newCompany
+                "data" => $newCompany
             ]);
         } else {
             http_response_code(500);
@@ -105,8 +106,8 @@ switch ($method) {
 
     // ── PUT: Update a company ─────────────────────────────────────────────
     case 'PUT':
-        $id   = intval($_GET['id'] ?? 0);
-        $raw  = file_get_contents('php://input');
+        $id = intval($_GET['id'] ?? 0);
+        $raw = file_get_contents('php://input');
         $data = json_decode($raw, true);
 
         if ($id <= 0) {
@@ -132,6 +133,7 @@ switch ($method) {
 
         $query = 'UPDATE companies SET
                     company_name = :company_name,
+                    package_name = :package_name,
                     owner_name   = :owner_name,
                     owner_mobile = :owner_mobile,
                     owner_email  = :owner_email,
@@ -141,26 +143,28 @@ switch ($method) {
 
         $stmt = $db->prepare($query);
         $stmt->bindValue(':company_name', trim($data['company_name']));
-        $stmt->bindValue(':owner_name',   trim($data['owner_name']));
+        $stmt->bindValue(':package_name', trim($data['package_name'] ?? ''));
+        $stmt->bindValue(':owner_name', trim($data['owner_name']));
         $stmt->bindValue(':owner_mobile', trim($data['owner_mobile']));
-        $stmt->bindValue(':owner_email',  trim($data['owner_email']));
-        $stmt->bindValue(':address',      trim($data['address'] ?? ''));
-        $stmt->bindValue(':admin_url',    rtrim(trim($data['admin_url']), '/'));
-        $stmt->bindValue(':id',           $id, PDO::PARAM_INT);
+        $stmt->bindValue(':owner_email', trim($data['owner_email']));
+        $stmt->bindValue(':address', trim($data['address'] ?? ''));
+        $stmt->bindValue(':admin_url', rtrim(trim($data['admin_url']), '/'));
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
 
         if ($stmt->execute()) {
-            if ($stmt->rowCount() > 0) {
+            if ($stmt->rowCount() >= 0) { // Changed back to >= 0 to allow updates with no changes
                 $fetch = $db->prepare('SELECT * FROM companies WHERE id = ?');
                 $fetch->execute([$id]);
                 echo json_encode(['status' => 'success', 'message' => 'Company updated', 'data' => $fetch->fetch()]);
             } else {
                 http_response_code(404);
-                echo json_encode(['status' => 'error', 'message' => 'Company not found or no changes made']);
+                echo json_encode(['status' => 'error', 'message' => 'Company not found']);
             }
         } else {
             http_response_code(500);
             echo json_encode(['status' => 'error', 'message' => 'Failed to update company']);
         }
+
         break;
 
     // ── DELETE: Remove a company ─────────────────────────────────────────────

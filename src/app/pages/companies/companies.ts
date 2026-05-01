@@ -13,6 +13,7 @@ const API_BASE = API_BASE_URL;
 interface Company {
   id?: number;
   company_name: string;
+  package_name?: string;
   owner_name: string;
   owner_mobile: string;
   owner_email: string;
@@ -138,6 +139,7 @@ interface Company {
                   <tr>
                     <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">#</th>
                     <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company</th>
+                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Package ID</th>
                     <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Owner</th>
                     <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Contact</th>
                     <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Admin Portal</th>
@@ -166,6 +168,11 @@ interface Company {
                             <p class="text-xs text-slate-400 mt-0.5 truncate max-w-[180px]">{{ company.address || '—' }}</p>
                           </div>
                         </div>
+                      </td>
+
+                      <!-- Package Name -->
+                      <td class="px-6 py-4">
+                        <p class="text-xs font-mono text-slate-500">{{ company.package_name || '—' }}</p>
                       </td>
 
                       <!-- Owner Name -->
@@ -280,6 +287,21 @@ interface Company {
                     <span class="material-symbols-outlined text-[13px]">error</span> Company name is required
                   </p>
                 }
+              </div>
+
+              <!-- Package Name (Google Play ID) -->
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Package Name (Google Play ID)
+                  <span class="ml-2 text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Google Play API</span>
+                </label>
+                <div class="relative">
+                  <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">id_card</span>
+                  <input id="field-package-name" formControlName="package_name" type="text"
+                    placeholder="e.g. com.company.app"
+                    class="w-full pl-10 pr-4 py-2.5 text-sm rounded-lg outline-none transition-all border bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                </div>
+                <p class="text-[10px] text-slate-400 mt-1.5 italic">Must match your Google Play Store ID to fetch live versions.</p>
               </div>
 
               <!-- Owner Name -->
@@ -468,16 +490,16 @@ interface Company {
 export class CompaniesComponent implements OnInit, OnDestroy {
 
   companies: Company[] = [];
-  loading    = false;
-  error      = '';
+  loading = false;
+  error = '';
   searchQuery = '';
 
   // Panel / Form
-  panelOpen    = false;
-  isEditing    = false;
+  panelOpen = false;
+  isEditing = false;
   editCompanyId: number | null = null;
-  submitted    = false;
-  submitting   = false;
+  submitted = false;
+  submitting = false;
   companyForm!: FormGroup;
 
   // Delete
@@ -495,8 +517,8 @@ export class CompaniesComponent implements OnInit, OnDestroy {
     const q = this.searchQuery.toLowerCase();
     return this.companies.filter(c =>
       c.company_name.toLowerCase().includes(q) ||
-      c.owner_name.toLowerCase().includes(q)   ||
-      c.owner_email.toLowerCase().includes(q)  ||
+      c.owner_name.toLowerCase().includes(q) ||
+      c.owner_email.toLowerCase().includes(q) ||
       c.admin_url.toLowerCase().includes(q)
     );
   }
@@ -513,7 +535,7 @@ export class CompaniesComponent implements OnInit, OnDestroy {
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
-  constructor(private http: HttpClient, private fb: FormBuilder, private cdr: ChangeDetectorRef, private router: Router) {}
+  constructor(private http: HttpClient, private fb: FormBuilder, private cdr: ChangeDetectorRef, private router: Router) { }
 
   ngOnInit() {
     this.initForm();
@@ -528,12 +550,13 @@ export class CompaniesComponent implements OnInit, OnDestroy {
 
   initForm() {
     this.companyForm = this.fb.group({
-      company_name:  ['', [Validators.required, Validators.minLength(2)]],
-      owner_name:    ['', Validators.required],
-      owner_mobile:  ['', Validators.required],
-      owner_email:   ['', [Validators.required, Validators.email]],
-      address:       [''],
-      admin_url:     ['', Validators.required],
+      company_name: ['', [Validators.required, Validators.minLength(2)]],
+      package_name: [''],
+      owner_name: ['', Validators.required],
+      owner_mobile: ['', Validators.required],
+      owner_email: ['', [Validators.required, Validators.email]],
+      address: [''],
+      admin_url: ['', Validators.required],
     });
   }
 
@@ -549,18 +572,18 @@ export class CompaniesComponent implements OnInit, OnDestroy {
 
   loadCompanies() {
     this.loading = true;
-    this.error   = '';
-        this.cdr.detectChanges();
+    this.error = '';
+    this.cdr.detectChanges();
     this.http.get<any>(`${API_BASE}/api/companies.php`).subscribe({
       next: (res) => {
         this.companies = res.data ?? [];
-        this.loading   = false;
-            this.cdr.detectChanges();
+        this.loading = false;
+        this.cdr.detectChanges();
       },
       error: () => {
-        this.error   = `Could not reach the backend at ${API_BASE}. Make sure the PHP server is running.`;
+        this.error = `Could not reach the backend at ${API_BASE}. Make sure the PHP server is running.`;
         this.loading = false;
-            this.cdr.detectChanges();
+        this.cdr.detectChanges();
       }
     });
   }
@@ -619,15 +642,15 @@ export class CompaniesComponent implements OnInit, OnDestroy {
     this.deleting = true;
     this.http.delete<any>(`${API_BASE}/api/companies.php?id=${this.deleteTarget.id}`).subscribe({
       next: () => {
-        this.companies    = this.companies.filter(c => c.id !== this.deleteTarget!.id);
-        this.deleting     = false;
+        this.companies = this.companies.filter(c => c.id !== this.deleteTarget!.id);
+        this.deleting = false;
         this.deleteTarget = null;
-            this.cdr.detectChanges();
+        this.cdr.detectChanges();
         this.showToast('Company deleted.', 'success');
       },
       error: () => {
         this.deleting = false;
-            this.cdr.detectChanges();
+        this.cdr.detectChanges();
         this.showToast('Failed to delete company.', 'error');
       }
     });
@@ -644,34 +667,35 @@ export class CompaniesComponent implements OnInit, OnDestroy {
   // ── Panel ─────────────────────────────────────────────────────────────────
 
   openAddPanel() {
-    this.isEditing     = false;
+    this.isEditing = false;
     this.editCompanyId = null;
-    this.panelOpen     = true;
-    this.submitted     = false;
+    this.panelOpen = true;
+    this.submitted = false;
     this.companyForm.reset();
     this.cdr.detectChanges();
   }
 
   openEditPanel(company: Company) {
-    this.isEditing     = true;
+    this.isEditing = true;
     this.editCompanyId = company.id ?? null;
-    this.panelOpen     = true;
-    this.submitted     = false;
+    this.panelOpen = true;
+    this.submitted = false;
     this.companyForm.patchValue({
-      company_name:  company.company_name,
-      owner_name:    company.owner_name,
-      owner_mobile:  company.owner_mobile,
-      owner_email:   company.owner_email,
-      address:       company.address,
-      admin_url:     company.admin_url,
+      company_name: company.company_name,
+      package_name: company.package_name,
+      owner_name: company.owner_name,
+      owner_mobile: company.owner_mobile,
+      owner_email: company.owner_email,
+      address: company.address,
+      admin_url: company.admin_url,
     });
     this.cdr.detectChanges();
   }
 
   closePanel() {
-    this.panelOpen     = false;
-    this.submitted     = false;
-    this.isEditing     = false;
+    this.panelOpen = false;
+    this.submitted = false;
+    this.isEditing = false;
     this.editCompanyId = null;
     this.cdr.detectChanges();
   }
@@ -679,7 +703,7 @@ export class CompaniesComponent implements OnInit, OnDestroy {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   getAvatarColor(name: string): string {
-    const palette = ['#3b82f6','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899','#14b8a6','#f97316'];
+    const palette = ['#3b82f6', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#f97316'];
     return palette[name.charCodeAt(0) % palette.length];
   }
 

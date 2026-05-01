@@ -18,6 +18,8 @@ import { CompanyDashboardComponent } from './pages/company-detail/company-dashbo
 import { CompanyContactsComponent }  from './pages/company-detail/company-contacts';
 import { CompanyServersComponent }   from './pages/company-detail/company-servers';
 import { CompanyFinanceComponent }   from './pages/company-detail/company-finance';
+import { FirmwareComponent }         from './pages/firmware/firmware';
+import { FileExplorerComponent }     from './pages/file-explorer/file-explorer';
 
 export const routes: Routes = [
     // ── Public ──────────────────────────────────────────────────────────────
@@ -30,6 +32,8 @@ export const routes: Routes = [
     { path: 'alerts',       component: AlertsComponent,           canActivate: [authGuard] },
     { path: 'development',  component: DevelopmentComponent,      canActivate: [authGuard] },
     { path: 'apps',         component: AppsComponent,             canActivate: [authGuard] },
+    { path: 'firmware',     component: FirmwareComponent,         canActivate: [authGuard] },
+    { path: 'file-explorer',component: FileExplorerComponent,     canActivate: [authGuard] },
     { path: 'archive',      component: ArchiveComponent,          canActivate: [authGuard] },
     { path: 'customer-dashboard', component: CustomerDashboardComponent, canActivate: [authGuard] },
     { path: 'contacts',     component: ContactsComponent,         canActivate: [authGuard] },

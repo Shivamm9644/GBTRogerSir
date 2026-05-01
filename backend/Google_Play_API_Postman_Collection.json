@@ -1,0 +1,112 @@
+{
+    "info": {
+        "name": "Google Play Publisher API Test",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "1. Create App Edit (Test)",
+            "event": [
+                {
+                    "listen": "prerequest",
+                    "script": {
+                        "exec": [
+                            "// Postman Pre-request script to generate Google OAuth2 JWT Signature",
+                            "var navigator = {};",
+                            "var window = {};",
+                            "eval(pm.environment.get('jsrsasign_code'));",
+                            "",
+                            "var client_email = pm.environment.get('client_email');",
+                            "var private_key = pm.environment.get('private_key');",
+                            "",
+                            "var header = {",
+                            "    \"alg\": \"RS256\",",
+                            "    \"typ\": \"JWT\"",
+                            "};",
+                            "",
+                            "var iat = Math.floor(Date.now() / 1000);",
+                            "var exp = iat + 3600;",
+                            "",
+                            "var claim = {",
+                            "    \"iss\": client_email,",
+                            "    \"scope\": \"https://www.googleapis.com/auth/androidpublisher\",",
+                            "    \"aud\": \"https://oauth2.googleapis.com/token\",",
+                            "    \"exp\": exp,",
+                            "    \"iat\": iat",
+                            "};",
+                            "",
+                            "var jwt = KJUR.jws.JWS.sign(\"RS256\", JSON.stringify(header), JSON.stringify(claim), private_key);",
+                            "",
+                            "// Get Auth Token",
+                            "pm.sendRequest({",
+                            "    url: 'https://oauth2.googleapis.com/token',",
+                            "    method: 'POST',",
+                            "    header: 'Content-Type: application/x-www-form-urlencoded',",
+                            "    body: {",
+                            "        mode: 'urlencoded',",
+                            "        urlencoded: [",
+                            "            { key: 'grant_type', value: 'urn:ietf:params:oauth:grant-type:jwt-bearer' },",
+                            "            { key: 'assertion', value: jwt }",
+                            "        ]",
+                            "    }",
+                            "}, function (err, res) {",
+                            "    var token = res.json().access_token;",
+                            "    pm.environment.set(\"google_access_token\", token);",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "auth": {
+                    "type": "bearer",
+                    "bearer": [
+                        {
+                            "key": "token",
+                            "value": "{{google_access_token}}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "method": "POST",
+                "header": [],
+                "url": {
+                    "raw": "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/com.allstar.eld/edits",
+                    "protocol": "https",
+                    "host": [
+                        "androidpublisher",
+                        "googleapis",
+                        "com"
+                    ],
+                    "path": [
+                        "androidpublisher",
+                        "v3",
+                        "applications",
+                        "com.allstar.eld",
+                        "edits"
+                    ]
+                }
+            },
+            "response": []
+        }
+    ],
+    "variable": [
+        {
+            "key": "client_email",
+            "value": "YOUR_SERVICE_ACCOUNT_EMAIL@developer.gserviceaccount.com"
+        },
+        {
+            "key": "private_key",
+            "value": "-----BEGIN PRIVATE KEY-----\\nMIIE...\\n-----END PRIVATE KEY-----\\n"
+        },
+        {
+            "key": "google_access_token",
+            "value": ""
+        },
+        {
+            "key": "jsrsasign_code",
+            "value": "pm.sendRequest('https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js', function (err, res) { pm.environment.set('jsrsasign_code', res.text()); });"
+        }
+    ]
+}

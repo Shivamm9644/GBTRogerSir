@@ -23,12 +23,14 @@ export class App implements OnInit {
   get isLoggedIn() { return this.auth.isLoggedIn; }
 
   navSetup = [
-    { label: 'Users',       icon: 'group',                route: '/users' },
-    { label: 'Companies',   icon: 'business',             route: '/companies' },
-    { label: 'Alerts',      icon: 'notifications_active', route: '/alerts' },
-    { label: 'Development', icon: 'terminal',             route: '/development' },
-    { label: 'Apps',        icon: 'widgets',              route: '/apps' },
-    { label: 'Archive',     icon: 'archive',              route: '/archive' },
+    { label: 'Users',         icon: 'group',                route: '/users' },
+    { label: 'Companies',     icon: 'business',             route: '/companies' },
+    { label: 'Alerts',        icon: 'notifications_active', route: '/alerts' },
+    { label: 'Development',   icon: 'terminal',             route: '/development' },
+    { label: 'Apps',          icon: 'widgets',              route: '/apps' },
+    { label: 'Firmware',      icon: 'memory',               route: '/firmware' },
+    { label: 'File Explorer', icon: 'folder_open',          route: '/file-explorer' },
+    { label: 'Archive',       icon: 'archive',              route: '/archive' },
   ];
 
   navCustomers = [
