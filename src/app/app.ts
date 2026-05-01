@@ -1,19 +1,25 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterOutlet, RouterLink, RouterLinkActive, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { AuthService } from './services/auth.service';
+import { LayoutService } from './services/layout.service';
 
 @Component({
   selector: 'app-root',
+  standalone: true,
   imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
 export class App implements OnInit {
-  isDarkMode = false;
   searchQuery = '';
 
   auth = inject(AuthService);
+  layout = inject(LayoutService);
+
+  get isSidebarVisible() { return this.layout.sidebarVisible(); }
+  get isDarkMode() { return document.documentElement.classList.contains('dark'); }
 
   get currentUser() {
     const u = this.auth.currentUser();
@@ -24,20 +30,20 @@ export class App implements OnInit {
 
   navSetup = [
     { label: 'Users',         icon: 'group',                route: '/users' },
-    { label: 'Companies',     icon: 'business',             route: '/companies' },
-    { label: 'Alerts',        icon: 'notifications_active', route: '/alerts' },
-    { label: 'Development',   icon: 'terminal',             route: '/development' },
-    { label: 'Apps',          icon: 'widgets',              route: '/apps' },
-    { label: 'Firmware',      icon: 'memory',               route: '/firmware' },
+    { label: 'System Alerts', icon: 'notifications',        route: '/alerts' },
+    { label: 'Development',   icon: 'developer_mode',       route: '/development' },
+    { label: 'Apps',          icon: 'apps',                 route: '/apps' },
+    { label: 'Firmware',      icon: 'dynamic_feed',         route: '/firmware' },
     { label: 'File Explorer', icon: 'folder_open',          route: '/file-explorer' },
-    { label: 'Archive',       icon: 'archive',              route: '/archive' },
+    { label: 'Archive',       icon: 'inventory_2',          route: '/archive' },
+    { label: 'Companies',     icon: 'business',             route: '/companies' },
   ];
 
   navCustomers = [
-    { label: 'Customer Dashboard', icon: 'monitoring',       route: '/customer-dashboard' },
-    { label: 'Contacts',           icon: 'contact_page',     route: '/contacts' },
-    { label: 'Servers',            icon: 'dns',              route: '/servers' },
-    { label: 'Finance',            icon: 'account_balance',  route: '/finance' },
+    { label: 'Customer Dashboard', icon: 'dashboard_customize', route: '/customer-dashboard' },
+    { label: 'Contacts',           icon: 'contact_phone',        route: '/contacts' },
+    { label: 'Servers',            icon: 'dns',                  route: '/servers' },
+    { label: 'Finance',            icon: 'payments',             route: '/finance' },
   ];
 
   constructor(private router: Router) {}
@@ -45,31 +51,48 @@ export class App implements OnInit {
   ngOnInit() {
     const savedMode = localStorage.getItem('darkMode');
     if (savedMode === 'true') this.enableDark();
+
+    // Reset sidebar on navigation
+    this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe(() => {
+      this.layout.reset();
+    });
+  }
+
+  onSearchChange(value: string) {
+    this.searchQuery = value;
+    // Logic for search can be added here
+  }
+
+  navigateTo(route: string) {
+    this.router.navigate([route]);
   }
 
   toggleDarkMode() {
-    this.isDarkMode = !this.isDarkMode;
-    if (this.isDarkMode) {
-      this.enableDark();
+    if (document.documentElement.classList.contains('dark')) {
+      this.disableDark();
     } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('darkMode', 'false');
+      this.enableDark();
     }
   }
 
-  enableDark() {
-    this.isDarkMode = true;
+  private enableDark() {
     document.documentElement.classList.add('dark');
     localStorage.setItem('darkMode', 'true');
   }
 
-  onSearchChange(value: string) { this.searchQuery = value; }
+  private disableDark() {
+    document.documentElement.classList.remove('dark');
+    localStorage.setItem('darkMode', 'false');
+  }
 
-  navigateTo(route: string) { this.router.navigate([route]); }
+  getInitials(name: string) {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  }
 
-  logout() { this.auth.logout(); }
-
-  getInitials(name: string): string {
-    return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  logout() {
+    this.auth.logout();
+    this.router.navigate(['/login']);
   }
 }

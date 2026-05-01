@@ -1,4 +1,10 @@
 /* You can add global styles to this file, and also import other style files */
-body {
-  min-height: max(884px, 100dvh);
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
 }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

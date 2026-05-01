@@ -20,13 +20,15 @@ import { CompanyServersComponent }   from './pages/company-detail/company-server
 import { CompanyFinanceComponent }   from './pages/company-detail/company-finance';
 import { FirmwareComponent }         from './pages/firmware/firmware';
 import { FileExplorerComponent }     from './pages/file-explorer/file-explorer';
+import { SelectAppComponent }       from './pages/select-app/select-app';
 
 export const routes: Routes = [
     // ── Public ──────────────────────────────────────────────────────────────
     { path: 'login', component: LoginComponent },
 
     // ── Protected (all require auth) ─────────────────────────────────────────
-    { path: '',             redirectTo: 'dashboard', pathMatch: 'full' },
+    { path: '',             redirectTo: 'select-app', pathMatch: 'full' },
+    { path: 'select-app',   component: SelectAppComponent,        canActivate: [authGuard] },
     { path: 'dashboard',    component: DashboardComponent,        canActivate: [authGuard] },
     { path: 'users',        component: UsersComponent,            canActivate: [authGuard] },
     { path: 'alerts',       component: AlertsComponent,           canActivate: [authGuard] },

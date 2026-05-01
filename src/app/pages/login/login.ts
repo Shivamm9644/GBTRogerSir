@@ -185,11 +185,11 @@ import { AuthService } from '../../services/auth.service';
   `
 })
 export class LoginComponent {
-  email    = '';
+  email = '';
   password = '';
   remember = false;
-  loading  = false;
-  error    = '';
+  loading = false;
+  error = '';
   showPassword = false;
   year = new Date().getFullYear();
 
@@ -200,12 +200,12 @@ export class LoginComponent {
 
   features = [
     { icon: 'local_shipping', label: 'Fleet & vehicle management' },
-    { icon: 'drive_eta',      label: 'Driver monitoring & HOS compliance' },
-    { icon: 'dns',            label: 'Real-time server health monitoring' },
-    { icon: 'account_balance',label: 'Finance & billing overview' },
+    { icon: 'drive_eta', label: 'Driver monitoring & HOS compliance' },
+    { icon: 'dns', label: 'Real-time server health monitoring' },
+    { icon: 'account_balance', label: 'Finance & billing overview' },
   ];
 
-  constructor(private auth: AuthService, private router: Router, private cdr: ChangeDetectorRef) {}
+  constructor(private auth: AuthService, private router: Router, private cdr: ChangeDetectorRef) { }
 
   async submit() {
     this.error = '';
@@ -220,9 +220,9 @@ export class LoginComponent {
     const result = await this.auth.login(this.email.trim(), this.password);
 
     if (result.success) {
-      this.router.navigate(['/dashboard']);
+      this.router.navigate(['/select-app']);
     } else {
-      this.error   = result.message;
+      this.error = result.message;
       this.loading = false;
       this.cdr.detectChanges();
     }

@@ -1,6 +1,6 @@
 <div class="flex h-screen overflow-hidden">
 
-    @if (isLoggedIn) {
+    @if (isLoggedIn && isSidebarVisible) {
     <!-- ── Sidebar ──────────────────────────────────────────────────────── -->
     <aside
         class="w-[84px] hover:w-64 transition-all duration-300 ease-in-out group border-r border-primary/10 bg-white dark:bg-slate-900 hidden md:flex flex-col shrink-0 overflow-x-hidden relative z-50">

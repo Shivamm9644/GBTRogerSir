@@ -4,9 +4,10 @@ import { Router } from '@angular/router';
 
 @Component({
     selector: 'app-dashboard',
+    standalone: true,
     imports: [CommonModule],
     template: `
-<div class="p-8 space-y-8">
+<div class="p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
   <!-- Header -->
   <div class="flex items-center justify-between">
     <div>
@@ -163,7 +164,9 @@ export class DashboardComponent {
         { title: 'System Update Available', desc: 'New firmware patch v2.4.1 ready.', time: '1h ago', icon: 'info', colorClass: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600', read: true },
     ];
     get unreadCount() { return this.alertsData.filter(a => !a.read).length; }
+
     constructor(private router: Router) { }
+
     onMetricClick(m: any) { alert(`Metric: ${m.title}\nValue: ${m.value}\nChange: ${m.change}`); }
     createReport() { alert('Create Report dialog... (mock)'); }
     showClusterDetail(c: any) { alert(`Cluster: ${c.name}\nRegion: ${c.region}\nLoad: ${c.load}%\nStatus: ${c.status}`); }
