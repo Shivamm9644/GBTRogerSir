@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { API_BASE_URL } from '../../config/api.config';
+import { LayoutService } from '../../services/layout.service';
+import { inject } from '@angular/core';
 
 // ─── Interfaces ────────────────────────────────────────────────────────────────
 
@@ -52,9 +54,9 @@ export interface AppArtifact {
   isDotCancelled: boolean;
   triggerLoginUpdate: boolean;
   userManualUrl: string;
-  liveStoreVersion?: string; 
+  liveStoreVersion?: string;
   liveStoreDate?: string;    // Add this
-  liveStoreError?: string;   
+  liveStoreError?: string;
 }
 
 export interface VersionHistory {
@@ -458,11 +460,26 @@ export class AppsComponent implements OnInit {
     { id: 'Binary', name: 'Binary / Other', icon: 'terminal' },
   ];
 
+  layout = inject(LayoutService);
+
   constructor(private fb: FormBuilder, private http: HttpClient) { }
 
   ngOnInit() {
     this.initForm();
     this.loadArtifacts();
+
+    // Sync with global category selection
+    const globalApp = this.layout.selectedApp();
+    if (globalApp !== 'ALL') {
+      // Map global caps to component specific casing
+      const map: Record<string, string> = {
+        'ELD': 'ELD',
+        'GPS': 'GPS',
+        'REEFER': 'Reefer',
+        'DASHCAM': 'DashCam'
+      };
+      this.activeCategory = map[globalApp] || 'All';
+    }
   }
 
   initForm() {
@@ -545,6 +562,14 @@ export class AppsComponent implements OnInit {
         a.hardware.toLowerCase().includes(search);
       const matchesPlatform = this.activePlatform === 'All' || a.platform === this.activePlatform;
       const matchesCategory = this.activeCategory === 'All' || a.type === this.activeCategory;
+
+      // Enforce global filter if not 'All'
+      const globalApp = this.layout.selectedApp();
+      if (globalApp !== 'ALL') {
+        const map: Record<string, string> = { 'ELD': 'ELD', 'GPS': 'GPS', 'REEFER': 'Reefer', 'DASHCAM': 'DashCam' };
+        if (a.type !== map[globalApp]) return false;
+      }
+
       return matchesSearch && matchesPlatform && matchesCategory;
     });
   }
@@ -604,8 +629,6 @@ export class AppsComponent implements OnInit {
     formData.append('platform', v.platform);
     formData.append('app_version', v.appVersion);
     formData.append('os_version', v.osVersion);
-    formData.append('hardware', v.hardware);
-    formData.append('firmware_version', v.firmwareVersion);
     formData.append('artifact_status', v.status);
     formData.append('dot_cancelled', v.isDotCancelled ? '1' : '0');
     if (this.binaryFile) formData.append('binary', this.binaryFile);
@@ -712,7 +735,7 @@ export class AppsComponent implements OnInit {
     const isAndroid = app.platform === 'Android';
     const isIOS = app.platform === 'iOS';
     const storeName = isAndroid ? 'Google Play Store' : 'Apple Store';
-    
+
     let actionDesc = '';
     if (isAndroid || isIOS) {
       actionDesc = `upload version ${app.appVersion} to the ${storeName} and initiate the background process to update end users upon their next login?`;

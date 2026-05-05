@@ -1,14 +1,13 @@
 <?php
-$host = '127.0.0.1';
-$db   = 'gbt_dashboard';
-$user = 'root';
-$pass = '';
-$charset = 'utf8mb4';
+require_once __DIR__ . '/../config/database.php';
 
-mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+$dbConfig = new Database();
+
+
+
 try {
-    $conn = new mysqli($host, $user, $pass, $db);
-    $conn->set_charset($charset);
+    $conn = new mysqli($dbConfig->host, $dbConfig->username, $dbConfig->password, $dbConfig->db_name);
+    $conn->set_charset($dbConfig->charset);
 
     // 1. Ensure 'apps' table exists
     $conn->query("CREATE TABLE IF NOT EXISTS apps (
@@ -29,14 +28,14 @@ try {
     // 3. Sync records from app_artifacts to apps if they are missing
     $checkOld = $conn->query("SHOW TABLES LIKE 'app_artifacts'");
     if ($checkOld->num_rows > 0) {
-        $conn->query("INSERT INTO apps (id, company, binary_file_name, binary_file_ext, parent_id, created_at) 
-                      SELECT id, company, binary_file_name, binary_file_ext, COALESCE(folder_id, 0), created_at 
-                      FROM app_artifacts
-                      WHERE id NOT IN (SELECT id FROM apps)");
+        $conn->query("INSERT INTO apps (id, company, binary_file_name, binary_file_ext, parent_id, created_at)
+            SELECT id, company, binary_file_name, binary_file_ext, COALESCE(folder_id, 0), created_at
+            FROM app_artifacts
+            WHERE id NOT IN (SELECT id FROM apps)");
     }
 
-} catch (mysqli_sql_exception $e) {
-     http_response_code(500);
-     echo json_encode(["success" => false, "message" => "Database connection failed: " . $e->getMessage()]);
-     exit;
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(["success" => false, "message" => "Database connection failed: " . $e->getMessage()]);
+    exit;
 }

@@ -36,7 +36,7 @@ interface NavItem {
 
           <div>
             <h1 class="text-xl font-black tracking-tighter uppercase">
-              App <span class="text-amber-500">Repository</span>
+              File <span class="text-amber-500">Explorer</span>
             </h1>
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">
               {{ isInsideZip() ? 'Browsing Archive' : 'System File Management' }}
@@ -243,14 +243,14 @@ interface NavItem {
 export class FileExplorerComponent implements OnInit {
   currentDisplayItems: any[] = [];
   allRawItems: any[] = []; // For filtering
-  
+
   navStack: NavItem[] = [];
   searchQuery = '';
-  
+
   isLoading = false;
   isUploading = false;
   uploadPercent = 0;
-  
+
   showSuccessPopup = false;
   showFolderModal = false;
   newFolderName = '';
@@ -422,7 +422,7 @@ export class FileExplorerComponent implements OnInit {
       this.currentDisplayItems = [...this.allRawItems];
       return;
     }
-    this.currentDisplayItems = this.allRawItems.filter(item => 
+    this.currentDisplayItems = this.allRawItems.filter(item =>
       this.getItemName(item).toLowerCase().includes(q)
     );
   }
@@ -478,6 +478,16 @@ export class FileExplorerComponent implements OnInit {
         this.newFolderName = '';
         this.triggerSuccess();
         this.refreshCurrentState();
+      },
+      error: (err) => {
+        console.error('Folder Creation Error:', err);
+        let msg = 'Failed to create folder. Please check server logs.';
+        if (err?.error?.message) {
+          msg = err.error.message;
+        } else if (err.statusText) {
+          msg = `Server Error: ${err.statusText} (${err.status})`;
+        }
+        alert('Error: ' + msg);
       }
     });
   }
@@ -502,7 +512,7 @@ export class FileExplorerComponent implements OnInit {
     const fd = new FormData();
     fd.append('cmd', 'save_app');
     fd.append('binary', file);
-    
+
     const folderId = this.getCurrentFolderId();
     if (folderId) fd.append('folder_id', String(folderId));
 
@@ -522,9 +532,21 @@ export class FileExplorerComponent implements OnInit {
           this.refreshCurrentState();
         }
       },
-      error: () => {
+      error: (err) => {
         this.isUploading = false;
-        alert('Upload failed.');
+        console.error('Full Upload Error Response:', err);
+
+        let msg = 'Upload failed. Please check server logs or permissions.';
+        if (err?.error?.message) {
+          msg = err.error.message;
+        } else if (typeof err.error === 'string' && !err.error.includes('<!DOCTYPE')) {
+          msg = err.error;
+        } else if (err.statusText) {
+          msg = `Server Error: ${err.statusText} (${err.status})`;
+        }
+
+        alert('Upload Error: ' + msg);
+        this.cdr.detectChanges();
       }
     });
   }

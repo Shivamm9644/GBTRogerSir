@@ -10,7 +10,7 @@ DB_ID=$4
 APP_IDENTIFIER=$5
 
 # Backend API for status updates
-API_URL="http://localhost:8000/api/apps.php"
+API_URL="https://app6.lmh-ai.in/gbtbackend/api/apps.php"
 
 update_status() {
     local status=$1

@@ -3,15 +3,15 @@
 class Database
 {
     // ── Update these to match your MySQL setup ──
-    private string $host = "localhost";
-    private string $db_name = "gbt_dashboard";
-    private string $username = "root";
-    private string $password = "";      // XAMPP default has no password
-    private string $charset = "utf8mb4";
+    public $host = "localhost";
+    public $db_name = "lmhaiss_app4";
+    public $username = "lmhaiss_app4";
+    public $password = "tedzZXe4EsSptezVsH7z";
+    public $charset = "utf8mb4";
 
-    public ?PDO $conn = null;
+    public $conn = null;
 
-    public function getConnection(): ?PDO
+    public function getConnection()
     {
         try {
             $dsn = "mysql:host={$this->host};dbname={$this->db_name};charset={$this->charset}";

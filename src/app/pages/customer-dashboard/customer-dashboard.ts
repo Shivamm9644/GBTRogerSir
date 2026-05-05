@@ -1,9 +1,10 @@
-import { Component, OnInit, HostListener } from '@angular/core';
+import { Component, OnInit, HostListener, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { API_BASE_URL } from '../../config/api.config';
+import { LayoutService } from '../../services/layout.service';
 
 interface CustomerAppSummary {
   id: number;
@@ -20,9 +21,9 @@ interface CustomerAppSummary {
 
 interface MonthlyTrend {
   month: string;
-  active: number; // App Active on the first day of the month
-  activated: number; // Running sum of devices activated during the month
-  deactivated: number; // Running sum of devices deactivated during the month
+  active: number; 
+  activated: number; 
+  deactivated: number; 
   cumulativeDeactivated: number;
   serverStatus: 'Online' | 'Warning' | 'Offline';
 }
@@ -36,7 +37,6 @@ interface MonthlyTrend {
   <!-- Dynamic Header -->
   <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
     <div>
-      <!-- <p class="text-xs font-black uppercase tracking-[0.22em] text-primary">Customer Admin</p> -->
       <h2 class="text-2xl font-bold text-slate-900 dark:text-white mt-1">
         {{ viewMode === 'summary' ? 'Dashboard Summary' : (viewMode === 'customerDashboard' ? 'Customer Dashboard' : 'Detailed Records') }}
       </h2>
@@ -65,11 +65,11 @@ interface MonthlyTrend {
         <button (click)="createCustomer()" class="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-primary/90">
           <span class="material-symbols-outlined text-[18px]">add_business</span>Create Customer
         </button>
-      @if (viewMode === 'summary') {
-        <button (click)="openTransferModal()" class="flex items-center gap-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg font-semibold text-sm border border-primary/10 hover:border-primary/40">
-          <span class="material-symbols-outlined text-[18px]">swap_horiz</span>Transfer Data
-        </button>
-      }
+        @if (viewMode === 'summary') {
+          <button (click)="openTransferModal()" class="flex items-center gap-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg font-semibold text-sm border border-primary/10 hover:border-primary/40">
+            <span class="material-symbols-outlined text-[18px]">swap_horiz</span>Transfer Data
+          </button>
+        }
       }
     </div>
   </div>
@@ -205,7 +205,7 @@ interface MonthlyTrend {
            <button (click)="enterDetails('ALL')" class="text-xs font-bold text-primary hover:underline">See All Customers</button>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-           @for (row of summaries.slice(0, 6); track row.id) {
+           @for (row of filteredSummaries.slice(0, 6); track row.id) {
              <div (click)="enterDetails('ALL', row)" 
                   (dblclick)="openViewOnlyDashboard(row); $event.stopPropagation()"
                   class="flex items-center justify-between p-3.5 rounded-xl border border-primary/5 hover:bg-slate-50 cursor-pointer transition-colors group">
@@ -826,10 +826,14 @@ export class CustomerDashboardComponent implements OnInit {
   transferToCustomer = '';
   transferPreview: { apps: number; activeUnits: number; added: number; deleted: number } | null = null;
 
+  layout = inject(LayoutService);
+
   constructor(private router: Router, private http: HttpClient) { }
 
   ngOnInit() {
     this.loadArtifacts();
+    // Sync with global category selection
+    this.selectedAppType = this.layout.selectedApp();
   }
 
   loadArtifacts() {
@@ -846,7 +850,6 @@ export class CustomerDashboardComponent implements OnInit {
     }
   }
 
-
   get customerDashboardRows(): CustomerAppSummary[] {
     if (!this.viewOnlyCustomer) return [];
     return this.summaries.filter(item => item.customer === this.viewOnlyCustomer?.customer && item.monthYear === this.viewOnlyCustomer?.monthYear);
@@ -862,7 +865,10 @@ export class CustomerDashboardComponent implements OnInit {
   }
 
   get summaryCards() {
-    const rows = this.summaries.filter(r => r.monthYear === this.selectedMonth);
+    const rows = this.summaries.filter(r => 
+      r.monthYear === this.selectedMonth && 
+      (this.selectedAppType === 'ALL' || r.app === this.selectedAppType)
+    );
     const active = rows.reduce((sum, row) => sum + row.activeAtStart, 0);
     const added = rows.reduce((sum, row) => sum + row.addedDuringMonth, 0);
     const deleted = rows.reduce((sum, row) => sum + row.deletedDuringMonth, 0);
@@ -876,7 +882,12 @@ export class CustomerDashboardComponent implements OnInit {
   }
 
   get appBlocks() {
-    return this.appTypes.map(type => {
+    // Strictly show ONLY the selected app type if not 'ALL'
+    const typesToDisplay = this.selectedAppType === 'ALL' 
+      ? this.appTypes 
+      : [this.selectedAppType];
+
+    return typesToDisplay.map(type => {
       const rows = this.summaries.filter(r => r.monthYear === this.selectedMonth && r.app === type);
       const count = rows.reduce((sum, r) => sum + r.activeAtStart, 0);
       const offline = rows.filter(r => r.serverStatus === 'Offline').length;
@@ -1006,7 +1017,6 @@ export class CustomerDashboardComponent implements OnInit {
 
   showTrend(row: CustomerAppSummary) {
     this.selectedTrend = row;
-    // Scroll to trend view if needed
     setTimeout(() => {
       document.querySelector('.bg-white.dark\\:bg-slate-900.rounded-2xl.border.border-primary\\/10.shadow-sm.overflow-hidden:last-of-type')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -1101,13 +1111,6 @@ export class CustomerDashboardComponent implements OnInit {
       return;
     }
 
-    // Dummy front-end only flow. Replace this block with backend API when ready.
-    // this.http.post(`${API_BASE_URL}/api/customer-transfer.php`, {
-    //   fromCompany: this.transferFromCustomer,
-    //   toCompany: this.transferToCustomer,
-    //   transferAllDashboardData: true,
-    //   reviewRequired: true
-    // }).subscribe(...)
     alert(`Transfer request prepared:
 ${this.transferFromCustomer} -> ${this.transferToCustomer}
 
@@ -1115,6 +1118,11 @@ Status: Dummy only. Backend API will be connected later.`);
     this.closeTransferModal();
   }
 
-  exportReport() { alert('Exporting customer dashboard summary...'); }
-  drillDown(kpi: any) { alert(`${kpi.label}: ${kpi.value}`); }
+  exportReport() { 
+    alert('Exporting customer dashboard summary...'); 
+  }
+  
+  drillDown(kpi: any) { 
+    alert(`${kpi.label}: ${kpi.value}`); 
+  }
 }
