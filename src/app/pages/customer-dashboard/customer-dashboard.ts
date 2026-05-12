@@ -21,9 +21,9 @@ interface CustomerAppSummary {
 
 interface MonthlyTrend {
   month: string;
-  active: number; 
-  activated: number; 
-  deactivated: number; 
+  active: number;
+  activated: number;
+  deactivated: number;
   cumulativeDeactivated: number;
   serverStatus: 'Online' | 'Warning' | 'Offline';
 }
@@ -774,7 +774,12 @@ export class CustomerDashboardComponent implements OnInit {
   viewMode: 'summary' | 'details' | 'customerDashboard' = 'summary';
   previousViewMode: 'summary' | 'details' = 'summary';
   selectedMonth = 'Apr/2026';
-  selectedAppType: 'ALL' | 'ELD' | 'GPS' | 'REEFER' | 'DASHCAM' = 'ALL';
+  get selectedAppType(): 'ALL' | 'ELD' | 'GPS' | 'REEFER' | 'DASHCAM' {
+    return this.layout.selectedApp() as any;
+  }
+  set selectedAppType(value: 'ALL' | 'ELD' | 'GPS' | 'REEFER' | 'DASHCAM') {
+    this.layout.setSelectedApp(value);
+  }
   search = '';
   selectedTrend: CustomerAppSummary | null = null;
   viewOnlyCustomer: CustomerAppSummary | null = null;
@@ -865,8 +870,8 @@ export class CustomerDashboardComponent implements OnInit {
   }
 
   get summaryCards() {
-    const rows = this.summaries.filter(r => 
-      r.monthYear === this.selectedMonth && 
+    const rows = this.summaries.filter(r =>
+      r.monthYear === this.selectedMonth &&
       (this.selectedAppType === 'ALL' || r.app === this.selectedAppType)
     );
     const active = rows.reduce((sum, row) => sum + row.activeAtStart, 0);
@@ -883,8 +888,8 @@ export class CustomerDashboardComponent implements OnInit {
 
   get appBlocks() {
     // Strictly show ONLY the selected app type if not 'ALL'
-    const typesToDisplay = this.selectedAppType === 'ALL' 
-      ? this.appTypes 
+    const typesToDisplay = this.selectedAppType === 'ALL'
+      ? this.appTypes
       : [this.selectedAppType];
 
     return typesToDisplay.map(type => {
@@ -1118,11 +1123,11 @@ Status: Dummy only. Backend API will be connected later.`);
     this.closeTransferModal();
   }
 
-  exportReport() { 
-    alert('Exporting customer dashboard summary...'); 
+  exportReport() {
+    alert('Exporting customer dashboard summary...');
   }
-  
-  drillDown(kpi: any) { 
-    alert(`${kpi.label}: ${kpi.value}`); 
+
+  drillDown(kpi: any) {
+    alert(`${kpi.label}: ${kpi.value}`);
   }
 }

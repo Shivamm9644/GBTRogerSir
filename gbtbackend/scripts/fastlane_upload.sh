@@ -1,66 +1,100 @@
 #!/bin/bash
 
-# Fastlane Automation Wrapper Script
-# Usage: ./fastlane_upload.sh <platform> <binary_path> <version> <db_id> <app_identifier>
+# Fastlane Automation Script for GBT Dashboard
+# Usage: ./fastlane_upload.sh <artifact_id>
 
-PLATFORM=$1
-BINARY_PATH=$2
-VERSION=$3
-DB_ID=$4
-APP_IDENTIFIER=$5
+# 1. Environment Setup
+export PATH=$PATH:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/home/$(whoami)/.gem/bin:/home/$(whoami)/.rbenv/shims
 
-# Backend API for status updates
-API_URL="https://app6.lmh-ai.in/gbtbackend/api/apps.php"
-
-update_status() {
-    local status=$1
-    local msg=$2
-    # Simple curl to update status back in DB
-    curl -s -X POST "$API_URL" \
-         -H "Content-Type: application/x-www-form-urlencoded" \
-         -d "cmd=update_status&id=$DB_ID&status=$status&message=$msg"
-}
-
-echo "--- Fastlane Session Started: $(date) ---"
-echo "Platform: $PLATFORM"
-echo "Binary: $BINARY_PATH"
-echo "Version: $VERSION"
-echo "App Identifier: $APP_IDENTIFIER"
-
-# Navigate to the fastlane directory
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-FASTLANE_DIR="$SCRIPT_DIR/../../fastlane"
-
-cd "$FASTLANE_DIR" || { echo "Fastlane directory not found"; exit 1; }
-
-# Load .env variables if file exists
-if [ -f ".env" ]; then
-    echo "Loading environment variables from .env"
-    export $(grep -v '^#' .env | xargs)
+# Find fastlane absolute path
+FASTLANE_CMD=$(which fastlane 2>/dev/null)
+if [ -z "$FASTLANE_CMD" ]; then
+    if [ -f "/usr/local/bin/fastlane" ]; then
+        FASTLANE_CMD="/usr/local/bin/fastlane"
+    elif [ -f "/usr/bin/fastlane" ]; then
+        FASTLANE_CMD="/usr/bin/fastlane"
+    else
+        FASTLANE_CMD="fastlane" # Fallback to default
+    fi
 fi
 
-# Export the dynamic identifier for Fastlane to use overriding Appfile
-export FASTLANE_APP_IDENTIFIER="$APP_IDENTIFIER"
+# Determine the script's directory and project root
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/../.." && pwd )"
+STORAGE_DIR="$PROJECT_ROOT/gbtbackend/storage/apps"
 
-# Execute official Fastlane command
-if [ "$PLATFORM" == "android" ]; then
-    # Ensure binary path is relative to current fastlane dir
-    # Note: BINARY_PATH is typically ../storage/apps/filename.apk relative to backend/api
-    # So from fastlane dir, it would be ../storage/apps/filename.apk
-    fastlane android_upload apk:"../$BINARY_PATH"
-elif [ "$PLATFORM" == "ios" ]; then
-    fastlane ios_upload ipa:"../$BINARY_PATH"
-else
-    echo "Unsupported platform: $PLATFORM"
-    update_status "failed" "Unsupported platform"
+echo "Script Dir: $SCRIPT_DIR"
+echo "Project Root: $PROJECT_ROOT"
+echo "Storage Dir: $STORAGE_DIR"
+
+ARTIFACT_ID=$1
+API_URL="https://app6.lmh-ai.in/gbtbackend/api/apps.php"
+
+if [ -z "$ARTIFACT_ID" ]; then
+    echo "Error: No Artifact ID provided."
     exit 1
 fi
 
-# Check exit code
-if [ $? -eq 0 ]; then
-    echo "Fastlane Task Completed Successfully."
-    update_status "success" "Uploaded v$VERSION to Store"
-else
-    echo "Fastlane Task Failed."
-    update_status "failed" "Fastlane error. Check logs on server."
+echo "--- Starting Fastlane Automation for ID: $ARTIFACT_ID ---"
+
+# 1. Fetch Artifact Details from API
+# We'll query the DB directly via PHP. 
+# We need to make sure the credentials match what's in apps.php.
+
+DETAILS=$(php -r "
+    \$db_host = 'localhost';
+    \$db_name = 'lmhaiss_app4';
+    \$db_user = 'lmhaiss_app4';
+    \$db_pass = 'tedzZXe4EsSptezVsH7z';
+    \$conn = new mysqli(\$db_host, \$db_user, \$db_pass, \$db_name);
+    if (\$conn->connect_error) {
+        echo json_encode(['error' => 'DB Connection failed']);
+        exit(1);
+    }
+    \$res = \$conn->query('SELECT * FROM app_artifacts WHERE id = $ARTIFACT_ID');
+    echo json_encode(\$res->fetch_assoc());
+")
+
+PLATFORM=$(echo $DETAILS | php -r "echo json_decode(file_get_contents('php://stdin'))->platform;")
+FILE_NAME=$(echo $DETAILS | php -r "echo json_decode(file_get_contents('php://stdin'))->binary_file_name;")
+PACKAGE_NAME=$(echo $DETAILS | php -r "echo json_decode(file_get_contents('php://stdin'))->package_name;")
+TRACK=$(echo $DETAILS | php -r "echo json_decode(file_get_contents('php://stdin'))->release_track;")
+
+ABS_PATH="$STORAGE_DIR/$FILE_NAME"
+
+echo "Platform: $PLATFORM"
+echo "Package: $PACKAGE_NAME"
+echo "Track: $TRACK"
+echo "File: $ABS_PATH"
+
+if [ ! -f "$ABS_PATH" ]; then
+    curl -X POST $API_URL -d "cmd=update_status&id=$ARTIFACT_ID&status=failed&message=Binary file not found on server."
+    exit 1
 fi
+
+# 2. Export ENV variables for Fastlane
+export FASTLANE_APP_IDENTIFIER="$PACKAGE_NAME"
+
+# 3. Execute Fastlane
+cd "$PROJECT_ROOT"
+
+SUCCESS=0
+if [ "$PLATFORM" == "Android" ]; then
+    $FASTLANE_CMD android android_upload aab:"$ABS_PATH" track:"$TRACK" package_name:"$PACKAGE_NAME"
+    SUCCESS=$?
+elif [ "$PLATFORM" == "iOS" ]; then
+    $FASTLANE_CMD ios ios_upload ipa:"$ABS_PATH"
+    SUCCESS=$?
+else
+    curl -X POST $API_URL -d "cmd=update_status&id=$ARTIFACT_ID&status=failed&message=Unsupported platform: $PLATFORM"
+    exit 1
+fi
+
+# 4. Report Result
+if [ $SUCCESS -eq 0 ]; then
+    curl -X POST $API_URL -d "cmd=update_status&id=$ARTIFACT_ID&status=success&message=Successfully uploaded to Store."
+else
+    curl -X POST $API_URL -d "cmd=update_status&id=$ARTIFACT_ID&status=failed&message=Fastlane execution failed. Check logs."
+fi
+
+echo "--- Automation Finished ---"

@@ -50,6 +50,10 @@ CREATE TABLE IF NOT EXISTS `app_artifacts` (
   `store_upload_status`   VARCHAR(50)  DEFAULT 'pending',
   `store_upload_message`  TEXT         DEFAULT NULL,
   `uploaded_to_store_at`  TIMESTAMP    NULL DEFAULT NULL,
+  `package_name`          VARCHAR(255) DEFAULT NULL,
+  `release_track`         VARCHAR(50)  DEFAULT 'internal',
+  `fastlane_log_path`     TEXT         DEFAULT NULL,
+  `auto_upload`           TINYINT(1)   DEFAULT 0,
   `created_at`            TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `archived_at`           TIMESTAMP    NULL DEFAULT NULL,
   PRIMARY KEY (`id`)

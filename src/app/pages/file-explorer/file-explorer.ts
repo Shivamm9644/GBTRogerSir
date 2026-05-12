@@ -162,13 +162,21 @@ interface NavItem {
                       </span>
                     </div>
 
-                    @if (!item.isDir && item.binary_file_ext !== 'folder') {
+                    <div class="flex gap-2">
+                      @if (!item.isDir && item.binary_file_ext !== 'folder') {
+                        <button
+                          (click)="$event.stopPropagation(); download(item)"
+                          class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-90">
+                          <span class="material-symbols-outlined text-[20px]">download</span>
+                        </button>
+                      }
                       <button
-                        (click)="$event.stopPropagation(); download(item)"
-                        class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-90">
-                        <span class="material-symbols-outlined text-[20px]">download</span>
+                        (click)="$event.stopImmediatePropagation(); $event.stopPropagation(); deleteItem(item)"
+                        class="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/40 text-red-600 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-md active:scale-90"
+                        title="Delete permanently">
+                        <span class="material-symbols-outlined text-[24px] font-bold">delete</span>
                       </button>
-                    }
+                    </div>
                   </div>
 
                   <h3 class="font-black text-base truncate mb-1" [title]="getItemName(item)">
@@ -275,7 +283,7 @@ export class FileExplorerComponent implements OnInit {
     this.isLoading = true;
     this.cdr.detectChanges();
 
-    this.http.get<any[]>(`${API_BASE_URL}/api/apps.php?cmd=get_all_archives`).subscribe({
+    this.http.get<any[]>(`${API_BASE_URL}/api/apps.php?cmd=get_all_archives&t=${Date.now()}`).subscribe({
       next: (res) => {
         this.allRawItems = res || [];
         this.applyFilter();
@@ -575,5 +583,28 @@ export class FileExplorerComponent implements OnInit {
       this.showSuccessPopup = false;
       this.cdr.detectChanges();
     }, 3000);
+  }
+
+  deleteItem(item: any) {
+    if (!item.id) {
+      alert("This item cannot be deleted (virtual archive path).");
+      return;
+    }
+    const name = this.getItemName(item);
+    if (confirm(`Are you sure you want to delete "${name}" permanently?`)) {
+      this.http.get(`${API_BASE_URL}/api/apps.php?cmd=delete&type=explorer&id=${item.id}&t=${Date.now()}`).subscribe({
+        next: (res: any) => {
+          if (res.success) {
+            this.triggerSuccess();
+            this.refreshCurrentState();
+          } else {
+            alert("Could not delete: " + res.message);
+          }
+        },
+        error: (err) => {
+          alert("Delete failed: " + (err?.error?.message || "Server connection error"));
+        }
+      });
+    }
   }
 }

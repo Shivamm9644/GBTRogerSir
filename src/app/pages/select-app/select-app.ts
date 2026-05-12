@@ -64,6 +64,7 @@ export class SelectAppComponent {
   }
 
   selectApp(appName: string) {
+    this.layout.setSelectedApp(appName);
     this.layout.showSidebar();
     this.router.navigate(['/dashboard']);
   }

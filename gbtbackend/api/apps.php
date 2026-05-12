@@ -97,7 +97,35 @@ try {
     try {
         $conn->query("ALTER TABLE app_artifacts ADD COLUMN user_manual VARCHAR(255) DEFAULT NULL");
     } catch (Exception $e) {
-        // Ignore duplicate column error
+    }
+
+    try {
+        $conn->query("ALTER TABLE app_artifacts ADD COLUMN package_name VARCHAR(255) DEFAULT NULL");
+    } catch (Exception $e) {
+    }
+    try {
+        $conn->query("ALTER TABLE app_artifacts ADD COLUMN release_track VARCHAR(50) DEFAULT 'internal'");
+    } catch (Exception $e) {
+    }
+    try {
+        $conn->query("ALTER TABLE app_artifacts ADD COLUMN fastlane_log_path TEXT DEFAULT NULL");
+    } catch (Exception $e) {
+    }
+    try {
+        $conn->query("ALTER TABLE app_artifacts ADD COLUMN auto_upload TINYINT(1) DEFAULT 0");
+    } catch (Exception $e) {
+    }
+    try {
+        $conn->query("ALTER TABLE app_artifacts ADD COLUMN store_upload_status VARCHAR(50) DEFAULT 'pending'");
+    } catch (Exception $e) {
+    }
+    try {
+        $conn->query("ALTER TABLE app_artifacts ADD COLUMN store_upload_message TEXT DEFAULT NULL");
+    } catch (Exception $e) {
+    }
+    try {
+        $conn->query("ALTER TABLE app_artifacts ADD COLUMN uploaded_to_store_at TIMESTAMP NULL DEFAULT NULL");
+    } catch (Exception $e) {
     }
 } catch (Exception $e) {
     http_response_code(500);
@@ -115,9 +143,9 @@ if (is_dir($uploadDir) && !is_writable($uploadDir)) {
 
 $cmd = '';
 if (isset($_GET['cmd'])) {
-    $cmd = $_GET['cmd'];
+    $cmd = trim($_GET['cmd']);
 } elseif (isset($_POST['cmd'])) {
-    $cmd = $_POST['cmd'];
+    $cmd = trim($_POST['cmd']);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST) && empty($_FILES) && empty(file_get_contents("php://input"))) {
@@ -131,7 +159,7 @@ $rawInput = file_get_contents("php://input");
 $jsonInput = json_decode($rawInput, true);
 
 if (!$cmd && isset($jsonInput['cmd'])) {
-    $cmd = $jsonInput['cmd'];
+    $cmd = trim($jsonInput['cmd']);
 }
 
 if ($cmd === '' || $cmd === 'get_all_apps') {
@@ -174,18 +202,29 @@ if ($cmd === 'get_folder_items') {
 
 if ($cmd === 'delete') {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-    if ($id > 0) {
+    $type = isset($_GET['type']) ? $_GET['type'] : 'artifact';
+
+    if ($id <= 0) {
+        echo json_encode(["success" => false, "message" => "Invalid ID: $id"]);
+        exit;
+    }
+
+    if ($type === 'explorer') {
+        $stmt = $conn->prepare("DELETE FROM apps WHERE id = ?");
+    } else {
         $stmt = $conn->prepare("DELETE FROM app_artifacts WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        if ($stmt->execute()) {
-            echo json_encode(["success" => true, "message" => "Artifact deleted"]);
+    }
+
+    $stmt->bind_param("i", $id);
+    if ($stmt->execute()) {
+        if ($stmt->affected_rows > 0) {
+            echo json_encode(["success" => true, "message" => "Deleted successfully from " . ($type === 'explorer' ? 'Explorer' : 'Artifacts')]);
         } else {
-            http_response_code(500);
-            echo json_encode(["success" => false, "message" => "Failed to delete"]);
+            echo json_encode(["success" => false, "message" => "Record not found in " . ($type === 'explorer' ? 'Explorer' : 'Artifacts')]);
         }
     } else {
-        http_response_code(400);
-        echo json_encode(["success" => false, "message" => "Invalid ID"]);
+        http_response_code(500);
+        echo json_encode(["success" => false, "message" => "Database error: " . $stmt->error]);
     }
     exit;
 }
@@ -332,6 +371,9 @@ if ($cmd === 'save_app') {
         $fwVersion = isset($_POST['firmware_version']) ? $_POST['firmware_version'] : '';
         $status = isset($_POST['artifact_status']) ? $_POST['artifact_status'] : 'Stable';
         $dotCancelled = isset($_POST['dot_cancelled']) ? intval($_POST['dot_cancelled']) : 0;
+        $packageName = isset($_POST['package_name']) ? $_POST['package_name'] : '';
+        $releaseTrack = isset($_POST['release_track']) ? $_POST['release_track'] : 'internal';
+        $autoUpload = (isset($_POST['auto_upload']) && $_POST['auto_upload'] == '1') ? 1 : 0;
 
         $userManual = '';
         if (isset($_FILES['user_manual']) && $_FILES['user_manual']['error'] === UPLOAD_ERR_OK) {
@@ -341,20 +383,20 @@ if ($cmd === 'save_app') {
 
         if ($id > 0) {
             if ($safeName && $userManual) {
-                $stmt = $conn->prepare("UPDATE app_artifacts SET company=?, description=?, app_type=?, platform=?, app_version=?, os_version=?, hardware=?, firmware_version=?, artifact_status=?, dot_cancelled=?, binary_file_name=?, binary_file_ext=?, user_manual=? WHERE id=?");
-                $stmt->bind_param("sssssssssisssi", $company, $desc, $appType, $platform, $appVersion, $osVersion, $hardware, $fwVersion, $status, $dotCancelled, $safeName, $ext, $userManual, $id);
+                $stmt = $conn->prepare("UPDATE app_artifacts SET company=?, description=?, app_type=?, platform=?, app_version=?, os_version=?, hardware=?, firmware_version=?, artifact_status=?, dot_cancelled=?, binary_file_name=?, binary_file_ext=?, user_manual=?, package_name=?, release_track=?, auto_upload=? WHERE id=?");
+                $stmt->bind_param("sssssssssisssssii", $company, $desc, $appType, $platform, $appVersion, $osVersion, $hardware, $fwVersion, $status, $dotCancelled, $safeName, $ext, $userManual, $packageName, $releaseTrack, $autoUpload, $id);
             } else if ($safeName) {
-                $stmt = $conn->prepare("UPDATE app_artifacts SET company=?, description=?, app_type=?, platform=?, app_version=?, os_version=?, hardware=?, firmware_version=?, artifact_status=?, dot_cancelled=?, binary_file_name=?, binary_file_ext=? WHERE id=?");
-                $stmt->bind_param("sssssssssissi", $company, $desc, $appType, $platform, $appVersion, $osVersion, $hardware, $fwVersion, $status, $dotCancelled, $safeName, $ext, $id);
+                $stmt = $conn->prepare("UPDATE app_artifacts SET company=?, description=?, app_type=?, platform=?, app_version=?, os_version=?, hardware=?, firmware_version=?, artifact_status=?, dot_cancelled=?, binary_file_name=?, binary_file_ext=?, package_name=?, release_track=?, auto_upload=? WHERE id=?");
+                $stmt->bind_param("sssssssssissisi", $company, $desc, $appType, $platform, $appVersion, $osVersion, $hardware, $fwVersion, $status, $dotCancelled, $safeName, $ext, $packageName, $releaseTrack, $autoUpload, $id);
             } else if ($userManual) {
-                $stmt = $conn->prepare("UPDATE app_artifacts SET company=?, description=?, app_type=?, platform=?, app_version=?, os_version=?, hardware=?, firmware_version=?, artifact_status=?, dot_cancelled=?, user_manual=? WHERE id=?");
-                $stmt->bind_param("sssssssssisi", $company, $desc, $appType, $platform, $appVersion, $osVersion, $hardware, $fwVersion, $status, $dotCancelled, $userManual, $id);
+                $stmt = $conn->prepare("UPDATE app_artifacts SET company=?, description=?, app_type=?, platform=?, app_version=?, os_version=?, hardware=?, firmware_version=?, artifact_status=?, dot_cancelled=?, user_manual=?, package_name=?, release_track=?, auto_upload=? WHERE id=?");
+                $stmt->bind_param("sssssssssisssii", $company, $desc, $appType, $platform, $appVersion, $osVersion, $hardware, $fwVersion, $status, $dotCancelled, $userManual, $packageName, $releaseTrack, $autoUpload, $id);
             } else {
-                $stmt = $conn->prepare("UPDATE app_artifacts SET company=?, description=?, app_type=?, platform=?, app_version=?, os_version=?, hardware=?, firmware_version=?, artifact_status=?, dot_cancelled=? WHERE id=?");
-                $stmt->bind_param("sssssssssii", $company, $desc, $appType, $platform, $appVersion, $osVersion, $hardware, $fwVersion, $status, $dotCancelled, $id);
+                $stmt = $conn->prepare("UPDATE app_artifacts SET company=?, description=?, app_type=?, platform=?, app_version=?, os_version=?, hardware=?, firmware_version=?, artifact_status=?, dot_cancelled=?, package_name=?, release_track=?, auto_upload=? WHERE id=?");
+                $stmt->bind_param("sssssssssiissii", $company, $desc, $appType, $platform, $appVersion, $osVersion, $hardware, $fwVersion, $status, $dotCancelled, $packageName, $releaseTrack, $autoUpload, $id);
             }
             if ($stmt->execute()) {
-                echo json_encode(["success" => true, "message" => "Artifact updated successfully"]);
+                echo json_encode(["success" => true, "message" => "Artifact updated successfully", "id" => $id]);
             } else {
                 http_response_code(500);
                 echo json_encode(["success" => false, "message" => $stmt->error]);
@@ -365,10 +407,24 @@ if ($cmd === 'save_app') {
             $archiveStmt->bind_param("ss", $company, $appType);
             $archiveStmt->execute();
 
-            $stmt = $conn->prepare("INSERT INTO app_artifacts (company, description, app_type, platform, app_version, os_version, hardware, firmware_version, artifact_status, dot_cancelled, binary_file_name, binary_file_ext, user_manual, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssssssssissss", $company, $desc, $appType, $platform, $appVersion, $osVersion, $hardware, $fwVersion, $status, $dotCancelled, $safeName, $ext, $userManual, $createdAt);
+            $stmt = $conn->prepare("INSERT INTO app_artifacts (company, description, app_type, platform, app_version, os_version, hardware, firmware_version, artifact_status, dot_cancelled, binary_file_name, binary_file_ext, user_manual, package_name, release_track, auto_upload, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("sssssssssisssssis", $company, $desc, $appType, $platform, $appVersion, $osVersion, $hardware, $fwVersion, $status, $dotCancelled, $safeName, $ext, $userManual, $packageName, $releaseTrack, $autoUpload, $createdAt);
             if ($stmt->execute()) {
-                echo json_encode(["success" => true, "message" => "Artifact saved successfully and previous versions archived.", "id" => $conn->insert_id]);
+                $newId = $conn->insert_id;
+                
+                // Trigger auto-upload if enabled
+                if ($autoUpload == 1) {
+                    $workerScript = __DIR__ . '/../scripts/aws_upload_worker.php';
+                    if (file_exists($workerScript)) {
+                        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                            pclose(popen("start /B php " . escapeshellarg($workerScript) . " " . escapeshellarg($newId) . " > NUL 2>&1", "r"));
+                        } else {
+                            exec("nohup php " . escapeshellarg($workerScript) . " " . escapeshellarg($newId) . " > /dev/null 2>&1 &");
+                        }
+                    }
+                }
+
+                echo json_encode(["success" => true, "message" => "Artifact saved successfully and previous versions archived.", "id" => $newId]);
             } else {
                 http_response_code(500);
                 echo json_encode(["success" => false, "message" => $stmt->error]);
@@ -497,5 +553,160 @@ if ($cmd === 'get_zip_contents') {
     exit;
 }
 
+if ($cmd === 'store_upload') {
+    $id = isset($_REQUEST['id']) ? intval($_REQUEST['id']) : 0;
+    if ($id <= 0) {
+        echo json_encode(["success" => false, "message" => "Invalid ID"]);
+        exit;
+    }
+
+    $stmt = $conn->prepare("SELECT * FROM app_artifacts WHERE id = ?");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $artifact = $stmt->get_result()->fetch_assoc();
+
+    if (!$artifact) {
+        echo json_encode(["success" => false, "message" => "Artifact not found"]);
+        exit;
+    }
+
+    $statusUpdate = $conn->prepare("UPDATE app_artifacts SET store_upload_status = 'processing', store_upload_message = 'Initiating Fastlane...' WHERE id = ?");
+    $statusUpdate->bind_param("i", $id);
+    $statusUpdate->execute();
+
+    $scriptPath = __DIR__ . '/../scripts/aws_upload_worker.php';
+    $logPath = __DIR__ . '/../logs/fastlane_' . $id . '.log';
+
+    // Ensure logs directory exists
+    $logsDir = dirname($logPath);
+    if (!is_dir($logsDir)) {
+        @mkdir($logsDir, 0777, true);
+    }
+
+    // Update log path in DB
+    $logUpdate = $conn->prepare("UPDATE app_artifacts SET fastlane_log_path = ? WHERE id = ?");
+    $logRelativePath = 'logs/' . basename($logPath);
+    $logUpdate->bind_param("si", $logRelativePath, $id);
+    $logUpdate->execute();
+
+    if (!file_exists($scriptPath)) {
+        http_response_code(400);
+        echo json_encode(["success" => false, "message" => "Automation script missing on server: $scriptPath"]);
+        exit;
+    }
+
+    try {
+        // Trigger background PHP process
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            // Windows background execution
+            pclose(popen("start /B php " . escapeshellarg($scriptPath) . " " . escapeshellarg($id) . " > NUL 2>&1", "r"));
+        } else {
+            // Linux/Unix background execution
+            exec("nohup php " . escapeshellarg($scriptPath) . " " . escapeshellarg($id) . " > /dev/null 2>&1 &");
+        }
+
+        echo json_encode(["success" => true, "message" => "Store upload initiated in background to AWS!"]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(["success" => false, "message" => "Execution failed: " . $e->getMessage()]);
+    }
+    exit;
+}
+
+if ($cmd === 'update_status') {
+    $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+    $status = isset($_POST['status']) ? $_POST['status'] : '';
+    $message = isset($_POST['message']) ? $_POST['message'] : '';
+
+    if ($id <= 0 || !$status) {
+        echo json_encode(["success" => false, "message" => "Missing parameters"]);
+        exit;
+    }
+
+    if ($status === 'success') {
+        $stmt = $conn->prepare("UPDATE app_artifacts SET store_upload_status = ?, store_upload_message = ?, uploaded_to_store_at = NOW() WHERE id = ?");
+        $stmt->bind_param("ssi", $status, $message, $id);
+    } else {
+        $stmt = $conn->prepare("UPDATE app_artifacts SET store_upload_status = ?, store_upload_message = ? WHERE id = ?");
+        $stmt->bind_param("ssi", $status, $message, $id);
+    }
+
+    if ($stmt->execute()) {
+        echo json_encode(["success" => true, "message" => "Status updated"]);
+    } else {
+        echo json_encode(["success" => false, "message" => $stmt->error]);
+    }
+    exit;
+}
+
+if ($cmd === 'view_log') {
+    $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+    $stmt = $conn->prepare("SELECT fastlane_log_path FROM app_artifacts WHERE id = ?");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $res = $stmt->get_result()->fetch_assoc();
+
+    if ($res && $res['fastlane_log_path']) {
+        $fullPath = __DIR__ . '/../' . $res['fastlane_log_path'];
+        if (file_exists($fullPath)) {
+            header('Content-Type: text/plain');
+            readfile($fullPath);
+            exit;
+        }
+    }
+    echo "Log file not found.";
+    exit;
+}
+
+if ($cmd === 'system_check') {
+    $rubyVersion = shell_exec('ruby -v 2>&1');
+    $fastlaneVersion = shell_exec('fastlane -v 2>&1');
+    $gemList = shell_exec('gem list fastlane 2>&1');
+
+    echo json_encode([
+        "ruby_installed" => (strpos($rubyVersion, 'ruby') !== false),
+        "ruby_version" => trim($rubyVersion),
+        "fastlane_installed" => (strpos($fastlaneVersion, 'fastlane') !== false),
+        "fastlane_version" => trim($fastlaneVersion),
+        "gem_check" => trim($gemList),
+        "whoami" => trim(shell_exec('whoami')),
+        "path" => getenv('PATH')
+    ], JSON_PRETTY_PRINT);
+    exit;
+}
+
+if ($cmd === 'debug_paths') {
+    $scriptPath = __DIR__ . '/../scripts/fastlane_upload.sh';
+    $storageDir = __DIR__ . '/../storage/apps';
+    $logsDir = __DIR__ . '/../logs';
+
+    echo json_encode([
+        "api_dir" => __DIR__,
+        "script_path" => $scriptPath,
+        "script_exists" => file_exists($scriptPath),
+        "storage_dir" => $storageDir,
+        "storage_exists" => is_dir($storageDir),
+        "logs_dir" => $logsDir,
+        "logs_exists" => is_dir($logsDir),
+        "logs_writable" => is_writable($logsDir),
+        "system_path" => getenv('PATH'),
+        "whoami" => shell_exec('whoami')
+    ], JSON_PRETTY_PRINT);
+    exit;
+}
+
+if ($cmd === 'check_live_version') {
+    $company = isset($_GET['company']) ? $_GET['company'] : '';
+    // This is a stub. Real integration would call Google Play / App Store APIs.
+    echo json_encode([
+        "status" => "success",
+        "live_version" => "N/A",
+        "release_date" => "Not Checked",
+        "message" => "Store sync pending implementation"
+    ]);
+    exit;
+}
+
 http_response_code(400);
-echo json_encode(["success" => false, "message" => "Invalid command"]);
+echo json_encode(["success" => false, "message" => "Invalid command: " . ($cmd ?: 'empty')]);
+exit;

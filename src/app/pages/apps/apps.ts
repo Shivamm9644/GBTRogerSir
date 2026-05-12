@@ -44,6 +44,10 @@ export interface AppArtifact {
   store_upload_message?: string;
   uploaded_to_store_at?: string;
   mail_sent_at?: string;
+  package_name?: string;
+  release_track?: string;
+  auto_upload?: boolean;
+  fastlane_log_path?: string;
 
   // UI UI Logic / Template Compatibility Aliases
   status: ArtifactStatus;
@@ -174,7 +178,7 @@ export interface VersionHistory {
                         
                         <!-- Inline Live Store Info -->
                         @if (app.platform === 'Android' || app.platform === 'iOS') {
-                          @if (app.liveStoreVersion) {
+                          @if (app.liveStoreVersion && app.liveStoreVersion !== 'N/A') {
                             <div class="flex flex-col border-t border-slate-100 dark:border-slate-700 mt-1 pt-1">
                               <span class="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
                                 <span class="material-symbols-outlined text-[12px]">cloud_done</span>
@@ -184,11 +188,27 @@ export interface VersionHistory {
                                 <span class="text-[8px] text-slate-400 italic">Updated: {{ app.liveStoreDate }}</span>
                               }
                             </div>
-                          } @else if (app.liveStoreError) {
+                          } @else if (app.liveStoreError && app.liveStoreError !== 'Not Checked') {
                             <div class="text-[8px] text-red-500 border-t border-slate-100 dark:border-slate-700 mt-1 pt-1 truncate max-w-[120px]" [title]="app.liveStoreError">
-                              Google API: {{ app.liveStoreError }}
+                              Store Sync: {{ app.liveStoreError }}
                             </div>
                           }
+                        }
+                        
+                        <!-- Store Upload Status -->
+                        @if (app.store_upload_status && app.store_upload_status !== 'none') {
+                           <div class="flex items-center gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                             <span [class]="'px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider cursor-help ' + 
+                               (app.store_upload_status === 'success' ? 'bg-emerald-50 text-emerald-600' : 
+                                app.store_upload_status === 'processing' ? 'bg-amber-50 text-amber-600 animate-pulse' : 
+                                app.store_upload_status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-slate-50 text-slate-400')"
+                                [title]="app.store_upload_message || 'No details available'">
+                               Store: {{ app.store_upload_status }}
+                             </span>
+                             @if (app.fastlane_log_path) {
+                               <button (click)="$event.stopPropagation(); viewLog(app.id)" class="text-[9px] font-bold text-blue-500 hover:underline">VIEW LOGS</button>
+                             }
+                           </div>
                         }
                       </div>
                     </td>
@@ -206,10 +226,16 @@ export interface VersionHistory {
                       </span>
                     </td>
                     <td class="px-5 py-4 text-center">
-                      <a [href]="app.userManualUrl" target="_blank" (click)="$event.stopPropagation()"
-                         class="p-1.5 hover:bg-red-50 text-red-500 rounded-lg inline-flex">
-                        <span class="material-symbols-outlined text-[20px]">picture_as_pdf</span>
-                      </a>
+                      <div class="flex items-center justify-center gap-2">
+                        <a [href]="app.userManualUrl" target="_blank" (click)="$event.stopPropagation()"
+                           class="p-1.5 hover:bg-red-50 text-red-500 rounded-lg inline-flex" title="View Manual">
+                          <span class="material-symbols-outlined text-[20px]">picture_as_pdf</span>
+                        </a>
+                        <button (click)="$event.stopPropagation(); deleteApp(app.id)"
+                                class="p-1.5 hover:bg-red-600 hover:text-white text-red-500 rounded-lg inline-flex transition-all" title="Delete Permanent">
+                          <span class="material-symbols-outlined text-[20px]">delete</span>
+                        </button>
+                      </div>
                     </td>
                     <td class="px-5 py-4 text-xs font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap">
                       {{ app.effectiveDate }}
@@ -258,6 +284,9 @@ export interface VersionHistory {
           <span class="material-symbols-outlined text-[18px]">apple</span> Upload to Apple Store
         </button>
       }
+      <button (click)="loadLiveStoreVersion(selectedApp!)" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold text-emerald-600 hover:bg-emerald-50 mt-1">
+        <span class="material-symbols-outlined text-[18px]">sync</span> Sync Store Status
+      </button>
       @if (selectedApp?.type === 'Firmware') {
         <button (click)="triggerStoreUpload(selectedApp)" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold text-blue-600 hover:bg-blue-50 mt-1">
           <span class="material-symbols-outlined text-[18px]">system_update</span> Trigger OTA Update
@@ -347,6 +376,23 @@ export interface VersionHistory {
 
           <div class="grid grid-cols-2 gap-6">
             <div class="space-y-1.5">
+              <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">PACKAGE NAME / BUNDLE ID *</label>
+              <input formControlName="packageName" placeholder="e.g. com.gbt.eld"
+                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
+            </div>
+            <div class="space-y-1.5">
+              <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">RELEASE TRACK *</label>
+              <select formControlName="releaseTrack" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 outline-none focus:ring-2 focus:ring-primary/20 transition-all">
+                <option value="internal">Internal Testing</option>
+                <option value="alpha">Alpha</option>
+                <option value="beta">Beta</option>
+                <option value="production">Production</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-6">
+            <div class="space-y-1.5">
               <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">USER MANUAL (PDF/DOC)</label>
               <div class="relative">
                 <input type="file" (change)="onManualSelected($event)" class="hidden" #manualInput />
@@ -366,6 +412,13 @@ export interface VersionHistory {
                 <option value="Legacy">Legacy</option>
               </select>
             </div>
+          </div>
+
+          <div class="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-2xl border border-blue-100 dark:border-blue-800">
+            <input type="checkbox" formControlName="autoUpload" id="autoUpload" class="w-4 h-4 rounded border-blue-300 text-primary focus:ring-primary">
+            <label for="autoUpload" class="text-xs font-bold text-blue-700 dark:text-blue-300 cursor-pointer">
+              Auto-Upload to Play Store / App Store Connect after saving
+            </label>
           </div>
 
           <div class="space-y-1.5">
@@ -432,6 +485,10 @@ export class AppsComponent implements OnInit {
   menuX = 0;
   menuY = 0;
   selectedApp: AppArtifact | null = null;
+
+  public viewLog(id: any) {
+    window.open(`${API_BASE_URL}api/apps.php?cmd=view_log&id=${id}`, '_blank');
+  }
   showUploadModal = false;
   showVersionHistoryModal = false;
   uploadedFileName = '';
@@ -491,12 +548,15 @@ export class AppsComponent implements OnInit {
       appVersion: ['', Validators.required],
       osVersion: ['', Validators.required],
       status: ['Latest', Validators.required],
-      isDotCancelled: [false]
+      isDotCancelled: [false],
+      packageName: [''],
+      releaseTrack: ['internal'],
+      autoUpload: [false]
     });
   }
 
   loadArtifacts() {
-    this.http.get<any[]>(`${API_BASE_URL}/api/apps.php`).subscribe({
+    this.http.get<any[]>(`${API_BASE_URL}api/apps.php?cmd=get_all_apps&t=${Date.now()}`).subscribe({
       next: (data) => {
         this.artifacts = (data || []).map(item => this.mapBackendToArtifact(item));
         localStorage.setItem('appsData', JSON.stringify(this.artifacts));
@@ -507,6 +567,12 @@ export class AppsComponent implements OnInit {
             this.loadLiveStoreVersion(app);
           }
         });
+
+        // Auto-poll if any app is processing
+        const isAnyProcessing = this.artifacts.some(a => a.store_upload_status === 'processing');
+        if (isAnyProcessing) {
+          setTimeout(() => this.loadArtifacts(), 15000);
+        }
       },
       error: (err) => {
         const local = localStorage.getItem('appsData');
@@ -516,7 +582,7 @@ export class AppsComponent implements OnInit {
   }
 
   loadLiveStoreVersion(app: AppArtifact) {
-    this.http.get<any>(`${API_BASE_URL}/api/apps.php?cmd=check_live_version&company=${encodeURIComponent(app.company)}`)
+    this.http.get<any>(`${API_BASE_URL}api/apps.php?cmd=check_live_version&company=${encodeURIComponent(app.company)}`)
       .subscribe({
         next: (res) => {
           if (res.status === 'success' && res.live_version) {
@@ -548,7 +614,13 @@ export class AppsComponent implements OnInit {
       isEncrypted: data.is_encrypted == 1,
       isDotCancelled: data.dot_cancelled == 1,
       triggerLoginUpdate: data.trigger_login_update == 1,
-      userManualUrl: data.user_manual ? `${API_BASE_URL}/storage/apps/${data.user_manual}` : '#'
+      userManualUrl: data.user_manual ? `${API_BASE_URL}/storage/apps/${data.user_manual}` : '#',
+      packageName: data.package_name,
+      releaseTrack: data.release_track,
+      autoUpload: data.auto_upload == 1,
+      store_upload_status: data.store_upload_status || 'none',
+      store_upload_message: data.store_upload_message || '',
+      fastlane_log_path: data.fastlane_log_path || ''
     };
   }
 
@@ -631,11 +703,14 @@ export class AppsComponent implements OnInit {
     formData.append('os_version', v.osVersion);
     formData.append('artifact_status', v.status);
     formData.append('dot_cancelled', v.isDotCancelled ? '1' : '0');
+    formData.append('package_name', v.packageName || '');
+    formData.append('release_track', v.releaseTrack || 'internal');
+    formData.append('auto_upload', v.autoUpload ? '1' : '0');
     if (this.binaryFile) formData.append('binary', this.binaryFile);
     if (this.manualFile) formData.append('user_manual', this.manualFile);
     if (this.editingAppId) formData.append('id', this.editingAppId.toString());
 
-    this.http.post<any>(`${API_BASE_URL}/api/apps.php`, formData).subscribe({
+    this.http.post<any>(`${API_BASE_URL}api/apps.php`, formData).subscribe({
       next: (resp) => {
         alert(resp.message);
         this.loadArtifacts();
@@ -655,7 +730,10 @@ export class AppsComponent implements OnInit {
     this.uploadForm.patchValue({
       company: app.company, type: app.type, description: app.description,
       platform: app.platform, appVersion: app.appVersion, osVersion: app.osVersion,
-      status: app.status, isDotCancelled: app.isDotCancelled
+      status: app.status, isDotCancelled: app.isDotCancelled,
+      packageName: app.package_name,
+      releaseTrack: app.release_track || 'internal',
+      autoUpload: app.auto_upload
     });
     this.uploadedFileName = app.binary_file_name || '';
     this.showUploadModal = true;
@@ -678,7 +756,7 @@ export class AppsComponent implements OnInit {
 
   deleteApp(id: number) {
     if (confirm("Delete this artifact permanently?")) {
-      this.http.get<any>(`${API_BASE_URL}/api/apps.php?cmd=delete&id=${id}`).subscribe({
+      this.http.get<any>(`${API_BASE_URL}api/apps.php?cmd=delete&id=${id}&t=${Date.now()}`).subscribe({
         next: (resp) => { alert(resp.message); this.loadArtifacts(); },
         error: (err) => alert("Delete failed")
       });
@@ -750,18 +828,15 @@ export class AppsComponent implements OnInit {
   }
 
   handleStoreUploadTrigger(id: number, platform: string, version: string) {
-    const isStore = platform === 'Android' || platform === 'iOS';
-    this.http.get<any>(`${API_BASE_URL}/api/apps.php?cmd=store_upload&id=${id}`).subscribe({
+    this.http.get<any>(`${API_BASE_URL}api/apps.php?cmd=store_upload&id=${id}`).subscribe({
       next: (resp) => {
-        if (isStore) {
-          alert(`🚀 Fastlane Automation Started!\n\nPlatform: ${platform}\nVersion: ${version}\n\nApp will be processed for the ${platform === 'Android' ? 'Play Store' : 'App Store'} in the background. Check 'Store Status' column for updates.`);
-          console.log(`Fastlane automation initiated for ${platform} v${version}`);
-        } else {
-          alert(resp.message);
-        }
+        alert(resp.message);
         this.loadArtifacts();
       },
-      error: (err) => alert("Store upload trigger failed.")
+      error: (err) => {
+        console.error("Store upload error:", err);
+        alert(`Store upload trigger failed: ${err.status} ${err.statusText}\n${err.message}`);
+      }
     });
   }
 

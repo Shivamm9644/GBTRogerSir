@@ -52,11 +52,11 @@ export class App implements OnInit {
     const savedMode = localStorage.getItem('darkMode');
     if (savedMode === 'true') this.enableDark();
 
-    // Reset sidebar on navigation
+    // Ensure sidebar is visible on navigation without resetting app selection
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
     ).subscribe(() => {
-      this.layout.reset();
+      this.layout.showSidebar();
     });
   }
 
