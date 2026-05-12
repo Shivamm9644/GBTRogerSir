@@ -175,6 +175,22 @@ if ($cmd === '' || $cmd === 'get_all_apps') {
     exit;
 }
 
+if ($cmd === 'check_live_version') {
+    $company = isset($_GET['company']) ? $_GET['company'] : '';
+    // Fetch the latest successfully uploaded version from our DB
+    $stmt = $conn->prepare("SELECT app_version FROM app_artifacts WHERE company = ? AND store_upload_status = 'success' ORDER BY id DESC LIMIT 1");
+    $stmt->bind_param("s", $company);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    
+    echo json_encode([
+        "success" => true,
+        "live_version" => $row ? $row['app_version'] : "Not Uploaded"
+    ]);
+    exit;
+}
+
 if ($cmd === 'get_all_archives') {
     $sql = "SELECT * FROM apps WHERE parent_id IS NULL OR parent_id = 0 ORDER BY binary_file_ext = 'folder' DESC, id DESC";
     $result = $conn->query($sql);
