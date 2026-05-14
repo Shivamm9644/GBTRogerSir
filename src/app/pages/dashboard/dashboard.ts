@@ -3,10 +3,10 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 
 @Component({
-    selector: 'app-dashboard',
-    standalone: true,
-    imports: [CommonModule],
-    template: `
+  selector: 'app-dashboard',
+  standalone: true,
+  imports: [CommonModule],
+  template: `
 <div class="p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
   <!-- Header -->
   <div class="flex items-center justify-between">
@@ -139,38 +139,42 @@ import { Router } from '@angular/router';
 `
 })
 export class DashboardComponent {
-    metricsData = [
-        { title: 'Total Customers', value: '1,284', change: '+12%', colorBg: 'bg-blue-50 dark:bg-blue-900/20', colorText: 'text-blue-600 dark:text-blue-400', icon: 'person', changeClass: 'text-green-500 bg-green-50 dark:bg-green-900/20' },
-        { title: 'Active Devices', value: '45,602', change: '+5.4%', colorBg: 'bg-indigo-50 dark:bg-indigo-900/20', colorText: 'text-indigo-600 dark:text-indigo-400', icon: 'devices', changeClass: 'text-green-500 bg-green-50 dark:bg-green-900/20' },
-        { title: 'Total Apps', value: '89', change: '-2.1%', colorBg: 'bg-purple-50 dark:bg-purple-900/20', colorText: 'text-purple-600 dark:text-purple-400', icon: 'apps', changeClass: 'text-red-500 bg-red-50 dark:bg-red-900/20' },
-        { title: 'Server Status', value: 'Healthy', change: '100% Uptime', colorBg: 'bg-green-50 dark:bg-green-900/20', colorText: 'text-green-600 dark:text-green-400', icon: 'bolt', changeClass: 'text-slate-500' },
-    ];
-    months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    barHeights = [30, 45, 40, 60, 55, 70, 65, 85, 80, 90, 95, 100];
-    weeklyData = [
-        { label: 'Week 1', active: 60, inactive: 40 },
-        { label: 'Week 2', active: 80, inactive: 30 },
-        { label: 'Week 3', active: 70, inactive: 50 },
-        { label: 'Week 4', active: 95, inactive: 15 },
-    ];
-    clustersData = [
-        { name: 'Cluster-US-West-01', id: '#9901-A', region: 'Oregon, USA', load: 32, loadColor: 'bg-green-500', status: 'ACTIVE', statusClass: 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' },
-        { name: 'Cluster-EU-Frank-03', id: '#4422-B', region: 'Frankfurt, DE', load: 78, loadColor: 'bg-yellow-500', status: 'WARNING', statusClass: 'bg-yellow-50 text-yellow-600 dark:bg-yellow-900/20 dark:text-yellow-400' },
-        { name: 'Cluster-AS-SGP-01', id: '#1109-C', region: 'Singapore', load: 92, loadColor: 'bg-red-500', status: 'CRITICAL', statusClass: 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400' },
-    ];
-    alertsData = [
-        { title: 'Database Connection Failed', desc: 'Attempt to reach main cluster failed.', time: 'Just now', icon: 'error', colorClass: 'bg-red-100 dark:bg-red-900/30 text-red-600', read: false },
-        { title: 'High Memory Usage', desc: 'Instance EU-Central-02 above 85%.', time: '15m ago', icon: 'warning', colorClass: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600', read: false },
-        { title: 'System Update Available', desc: 'New firmware patch v2.4.1 ready.', time: '1h ago', icon: 'info', colorClass: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600', read: true },
-    ];
-    get unreadCount() { return this.alertsData.filter(a => !a.read).length; }
+  metricsData = [
+    { title: 'Total Companies', value: '1,284', change: '+12%', colorBg: 'bg-blue-50 dark:bg-blue-900/20', colorText: 'text-blue-600 dark:text-blue-400', icon: 'corporate_fare', changeClass: 'text-green-500 bg-green-50 dark:bg-green-900/20', route: '/companies' },
+    { title: 'Total Users', value: '45,602', change: '+5.4%', colorBg: 'bg-indigo-50 dark:bg-indigo-900/20', colorText: 'text-indigo-600 dark:text-indigo-400', icon: 'person', changeClass: 'text-green-500 bg-green-50 dark:bg-green-900/20', route: '/users' },
+    { title: 'Total Apps', value: '89', change: '-2.1%', colorBg: 'bg-purple-50 dark:bg-purple-900/20', colorText: 'text-purple-600 dark:text-purple-400', icon: 'apps', changeClass: 'text-red-500 bg-red-50 dark:bg-red-900/20', route: '/apps' },
+    { title: 'Server Status', value: 'Healthy', change: '100% Uptime', colorBg: 'bg-green-50 dark:bg-green-900/20', colorText: 'text-green-600 dark:text-green-400', icon: 'bolt', changeClass: 'text-slate-500', route: '/servers' },
+  ];
+  months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  barHeights = [30, 45, 40, 60, 55, 70, 65, 85, 80, 90, 95, 100];
+  weeklyData = [
+    { label: 'Week 1', active: 60, inactive: 40 },
+    { label: 'Week 2', active: 80, inactive: 30 },
+    { label: 'Week 3', active: 70, inactive: 50 },
+    { label: 'Week 4', active: 95, inactive: 15 },
+  ];
+  clustersData = [
+    { name: 'Cluster-US-West-01', id: '#9901-A', region: 'Oregon, USA', load: 32, loadColor: 'bg-green-500', status: 'ACTIVE', statusClass: 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' },
+    { name: 'Cluster-EU-Frank-03', id: '#4422-B', region: 'Frankfurt, DE', load: 78, loadColor: 'bg-yellow-500', status: 'WARNING', statusClass: 'bg-yellow-50 text-yellow-600 dark:bg-yellow-900/20 dark:text-yellow-400' },
+    { name: 'Cluster-AS-SGP-01', id: '#1109-C', region: 'Singapore', load: 92, loadColor: 'bg-red-500', status: 'CRITICAL', statusClass: 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400' },
+  ];
+  alertsData = [
+    { title: 'Database Connection Failed', desc: 'Attempt to reach main cluster failed.', time: 'Just now', icon: 'error', colorClass: 'bg-red-100 dark:bg-red-900/30 text-red-600', read: false },
+    { title: 'High Memory Usage', desc: 'Instance EU-Central-02 above 85%.', time: '15m ago', icon: 'warning', colorClass: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600', read: false },
+    { title: 'System Update Available', desc: 'New firmware patch v2.4.1 ready.', time: '1h ago', icon: 'info', colorClass: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600', read: true },
+  ];
+  get unreadCount() { return this.alertsData.filter(a => !a.read).length; }
 
-    constructor(private router: Router) { }
+  constructor(private router: Router) { }
 
-    onMetricClick(m: any) { alert(`Metric: ${m.title}\nValue: ${m.value}\nChange: ${m.change}`); }
-    createReport() { alert('Create Report dialog... (mock)'); }
-    showClusterDetail(c: any) { alert(`Cluster: ${c.name}\nRegion: ${c.region}\nLoad: ${c.load}%\nStatus: ${c.status}`); }
-    goToServers() { this.router.navigate(['/servers']); }
-    markRead(a: any) { a.read = true; }
-    markAllRead() { this.alertsData.forEach(a => a.read = true); }
+  onMetricClick(m: any) {
+    if (m.route) {
+      this.router.navigate([m.route]);
+    }
+  }
+  createReport() { alert('Create Report dialog... (mock)'); }
+  showClusterDetail(c: any) { alert(`Cluster: ${c.name}\nRegion: ${c.region}\nLoad: ${c.load}%\nStatus: ${c.status}`); }
+  goToServers() { this.router.navigate(['/servers']); }
+  markRead(a: any) { a.read = true; }
+  markAllRead() { this.alertsData.forEach(a => a.read = true); }
 }

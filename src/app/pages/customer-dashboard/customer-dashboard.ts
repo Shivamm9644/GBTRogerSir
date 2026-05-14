@@ -1,10 +1,11 @@
-import { Component, OnInit, HostListener, inject } from '@angular/core';
+import { Component, OnInit, HostListener, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { API_BASE_URL } from '../../config/api.config';
 import { LayoutService } from '../../services/layout.service';
+import { EldService, EldCompanyDashboard } from '../../services/eld.service';
 
 interface CustomerAppSummary {
   id: number;
@@ -17,6 +18,10 @@ interface CustomerAppSummary {
   deletedDuringMonth: number;
   serverStatus: 'Online' | 'Warning' | 'Offline';
   locked: boolean;
+  companyKey?: string;
+  lastSync?: string;
+  isSyncing?: boolean;
+  totalClients?: number;
 }
 
 interface MonthlyTrend {
@@ -254,13 +259,14 @@ interface MonthlyTrend {
           <table class="w-full text-sm">
             <thead class="bg-slate-50 dark:bg-slate-800/70 text-xs uppercase tracking-wider text-slate-500">
               <tr>
-                <th class="px-6 py-3 text-left font-black">Customer</th>
+                <th class="px-6 py-3 text-left font-black">Company Name</th>
                 <th class="px-6 py-3 text-left font-black">Mm/Yr</th>
                 <th class="px-6 py-3 text-left font-black">App</th>
-                <th class="px-6 py-3 text-right font-black">Active Start</th>
-                <th class="px-6 py-3 text-right font-black">Added</th>
-                <th class="px-6 py-3 text-right font-black">Deleted</th>
+                <th class="px-6 py-3 text-right font-black">Total Vehicles</th>
+                <th class="px-6 py-3 text-right font-black">Total Drivers</th>
+                <th class="px-6 py-3 text-right font-black">Total Clients</th>
                 <th class="px-6 py-3 text-left font-black">Server Status</th>
+                <th class="px-6 py-3 text-left font-black">Last Sync</th>
                 <th class="px-6 py-3 text-right font-black">Actions</th>
               </tr>
             </thead>
@@ -289,15 +295,21 @@ interface MonthlyTrend {
                     </span>
                   </td>
                   <td class="px-6 py-4 text-right font-bold">{{ row.activeAtStart | number }}</td>
-                  <td class="px-6 py-4 text-right font-bold text-emerald-600">+{{ row.addedDuringMonth | number }}</td>
-                  <td class="px-6 py-4 text-right font-bold text-red-500">-{{ row.deletedDuringMonth | number }}</td>
+                  <td class="px-6 py-4 text-right font-bold text-emerald-600">{{ row.addedDuringMonth | number }}</td>
+                  <td class="px-6 py-4 text-right font-bold text-purple-500">{{ row.totalClients | number }}</td>
                   <td class="px-6 py-4">
                     <span class="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full" [class]="getServerClass(row.serverStatus)">
                       <span class="w-2 h-2 rounded-full" [class]="getServerDotClass(row.serverStatus)"></span>{{ row.serverStatus }}
                     </span>
                   </td>
+                  <td class="px-6 py-4 text-xs font-mono text-slate-500">
+                    {{ row.lastSync || 'Never' }}
+                  </td>
                   <td class="px-6 py-4 text-right">
                     <div class="flex items-center justify-end gap-2">
+                      <button (click)="syncCompany(row); $event.stopPropagation()" [disabled]="row.isSyncing" class="p-2 rounded-lg hover:bg-emerald-50 text-emerald-600 disabled:opacity-50">
+                        <span class="material-symbols-outlined text-[18px]" [class.animate-spin]="row.isSyncing">sync</span>
+                      </button>
                       <button (click)="editCustomer(row); $event.stopPropagation()" class="p-2 rounded-lg hover:bg-blue-50 text-blue-600">
                         <span class="material-symbols-outlined text-[18px]">edit</span>
                       </button>
@@ -796,14 +808,7 @@ export class CustomerDashboardComponent implements OnInit {
   months = ['Apr/2026', 'Mar/2026', 'Feb/2026', 'Jan/2026'];
   appTypes: ('ELD' | 'GPS' | 'REEFER' | 'DASHCAM')[] = ['ELD', 'GPS', 'REEFER', 'DASHCAM'];
 
-  summaries: CustomerAppSummary[] = [
-    { id: 1, customer: 'Acme Logistics', monthYear: 'Apr/2026', app: 'ELD', activeAtStart: 118, addedDuringMonth: 9, deletedDuringMonth: 2, serverStatus: 'Online', locked: true },
-    { id: 2, customer: 'Acme Logistics', monthYear: 'Apr/2026', app: 'GPS', activeAtStart: 104, addedDuringMonth: 6, deletedDuringMonth: 1, serverStatus: 'Online', locked: true },
-    { id: 3, customer: 'Northline Freight', monthYear: 'Apr/2026', app: 'REEFER', activeAtStart: 42, addedDuringMonth: 4, deletedDuringMonth: 3, serverStatus: 'Warning', locked: false },
-    { id: 4, customer: 'Prime Carrier Group', monthYear: 'Apr/2026', app: 'DASHCAM', activeAtStart: 76, addedDuringMonth: 8, deletedDuringMonth: 0, serverStatus: 'Online', locked: true },
-    { id: 5, customer: 'Sterling Transport', monthYear: 'Apr/2026', app: 'ELD', activeAtStart: 31, addedDuringMonth: 1, deletedDuringMonth: 4, serverStatus: 'Offline', locked: false },
-    { id: 6, customer: 'Globe Fleet Inc.', monthYear: 'Mar/2026', app: 'GPS', activeAtStart: 89, addedDuringMonth: 5, deletedDuringMonth: 2, serverStatus: 'Online', locked: true },
-  ];
+  summaries: CustomerAppSummary[] = [];
 
   trendData: MonthlyTrend[] = [
     { month: 'May', active: 78, activated: 5, deactivated: 3, cumulativeDeactivated: 12, serverStatus: 'Online' },
@@ -832,18 +837,96 @@ export class CustomerDashboardComponent implements OnInit {
   transferPreview: { apps: number; activeUnits: number; added: number; deleted: number } | null = null;
 
   layout = inject(LayoutService);
+  cdr = inject(ChangeDetectorRef);
+  eldService = inject(EldService);
 
   constructor(private router: Router, private http: HttpClient) { }
 
   ngOnInit() {
     this.loadArtifacts();
-    // Sync with global category selection
-    this.selectedAppType = this.layout.selectedApp();
+    
+    const savedAppType = localStorage.getItem('selectedAppType');
+    if (savedAppType) {
+      this.selectedAppType = savedAppType as any;
+      this.layout.setSelectedApp(this.selectedAppType);
+    } else {
+      this.selectedAppType = this.layout.selectedApp();
+    }
+
+    if (this.selectedAppType === 'ELD' || this.selectedAppType === 'ALL') {
+      this.loadRealCustomers();
+    } else {
+      this.summaries = [];
+    }
+  }
+
+  selectAppType(type: string) {
+    this.selectedAppType = type as any;
+    localStorage.setItem('selectedAppType', type);
+    this.layout.setSelectedApp(type as any);
+    if (type === 'ELD' || type === 'ALL') {
+      this.loadRealCustomers();
+    }
   }
 
   loadArtifacts() {
     this.http.get<any[]>(`${API_BASE_URL}/api/apps.php`).subscribe(data => {
       this.artifacts = data || [];
+    });
+  }
+
+  loadRealCustomers() {
+    this.eldService.getAllCompaniesDashboard().subscribe({
+      next: (res) => {
+        if (res.status === 'success' && res.data) {
+          this.summaries = res.data.map((company, index) => {
+            return {
+              id: index + 1,
+              companyId: 'CMP-' + index,
+              customer: company.company,
+              companyKey: company.company_key,
+              monthYear: this.selectedMonth,
+              app: 'ELD',
+              activeAtStart: company.active_vehicles, 
+              addedDuringMonth: company.total_drivers,
+              deletedDuringMonth: 0,
+              totalClients: company.total_clients,
+              serverStatus: (company.server_status === 'online' ? 'Online' : 'Offline') as any,
+              lastSync: company.last_sync,
+              locked: true,
+              isSyncing: false
+            };
+          });
+          this.cdr.detectChanges();
+        }
+      },
+      error: (err) => console.error("Failed to load ELD companies", err)
+    });
+  }
+
+  syncCompany(record: CustomerAppSummary) {
+    if (!record.companyKey) return;
+    record.isSyncing = true;
+    this.cdr.detectChanges();
+    
+    this.eldService.syncCompany(record.companyKey).subscribe({
+      next: (res) => {
+        record.isSyncing = false;
+        if (res.status === 'success' && res.summary) {
+          record.activeAtStart = res.summary.active_vehicles;
+          record.addedDuringMonth = res.summary.total_drivers;
+          record.totalClients = res.summary.total_clients;
+          record.serverStatus = res.summary.server_status === 'online' ? 'Online' : 'Offline';
+          record.lastSync = new Date().toISOString().replace('T', ' ').substring(0, 19);
+        }
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error("Failed to sync", err);
+        record.isSyncing = false;
+        record.serverStatus = 'Offline';
+        this.cdr.detectChanges();
+      }
     });
   }
 
@@ -874,14 +957,14 @@ export class CustomerDashboardComponent implements OnInit {
       r.monthYear === this.selectedMonth &&
       (this.selectedAppType === 'ALL' || r.app === this.selectedAppType)
     );
-    const active = rows.reduce((sum, row) => sum + row.activeAtStart, 0);
-    const added = rows.reduce((sum, row) => sum + row.addedDuringMonth, 0);
-    const deleted = rows.reduce((sum, row) => sum + row.deletedDuringMonth, 0);
+    const active = rows.reduce((sum, row) => sum + row.activeAtStart, 0); // Active Vehicles
+    const added = rows.reduce((sum, row) => sum + row.addedDuringMonth, 0); // Total Drivers
+    const clients = rows.reduce((sum, row) => sum + (row.totalClients || 0), 0); // Total Clients
     const issues = rows.filter(row => row.serverStatus !== 'Online').length;
     return [
-      { label: 'Active Devices', value: active.toLocaleString(), badge: 'Start Month', icon: 'devices', bg: 'bg-blue-50 dark:bg-blue-900/20', color: 'text-blue-600', badgeClass: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20' },
-      { label: 'Apps Added', value: added.toLocaleString(), badge: 'Running Sum', icon: 'add_circle', bg: 'bg-emerald-50 dark:bg-emerald-900/20', color: 'text-emerald-600', badgeClass: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20' },
-      { label: 'Apps Deleted', value: deleted.toLocaleString(), badge: 'Running Sum', icon: 'remove_circle', bg: 'bg-red-50 dark:bg-red-900/20', color: 'text-red-500', badgeClass: 'bg-red-50 text-red-500 dark:bg-red-900/20' },
+      { label: 'Active Vehicles', value: active.toLocaleString(), badge: 'Total', icon: 'local_shipping', bg: 'bg-blue-50 dark:bg-blue-900/20', color: 'text-blue-600', badgeClass: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20' },
+      { label: 'Total Drivers', value: added.toLocaleString(), badge: 'Total', icon: 'person', bg: 'bg-emerald-50 dark:bg-emerald-900/20', color: 'text-emerald-600', badgeClass: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20' },
+      { label: 'Total Clients', value: clients.toLocaleString(), badge: 'Total', icon: 'business', bg: 'bg-purple-50 dark:bg-purple-900/20', color: 'text-purple-500', badgeClass: 'bg-purple-50 text-purple-500 dark:bg-purple-900/20' },
       { label: 'Server Issues', value: issues.toLocaleString(), badge: 'Status', icon: 'dns', bg: 'bg-amber-50 dark:bg-amber-900/20', color: 'text-amber-600', badgeClass: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20' },
     ];
   }

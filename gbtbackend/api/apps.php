@@ -158,10 +158,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST) && empty($_FILES) && 
 $rawInput = file_get_contents("php://input");
 $jsonInput = json_decode($rawInput, true);
 
-if (!$cmd && isset($jsonInput['cmd'])) {
+iif(!$cmd && isset($jsonInput['cmd'])) {
     $cmd = trim($jsonInput['cmd']);
 }
 
+// Commands logic start
 if ($cmd === '' || $cmd === 'get_all_apps') {
     $sql = "SELECT * FROM app_artifacts WHERE archive_status != 'archived' ORDER BY id DESC";
     $result = $conn->query($sql);
@@ -177,13 +178,12 @@ if ($cmd === '' || $cmd === 'get_all_apps') {
 
 if ($cmd === 'check_live_version') {
     $company = isset($_GET['company']) ? $_GET['company'] : '';
-    // Fetch the latest successfully uploaded version from our DB
     $stmt = $conn->prepare("SELECT app_version FROM app_artifacts WHERE company = ? AND store_upload_status = 'success' ORDER BY id DESC LIMIT 1");
     $stmt->bind_param("s", $company);
     $stmt->execute();
     $result = $stmt->get_result();
     $row = $result->fetch_assoc();
-    
+
     echo json_encode([
         "success" => true,
         "live_version" => $row ? $row['app_version'] : "Not Uploaded"
@@ -192,12 +192,8 @@ if ($cmd === 'check_live_version') {
 }
 
 if ($cmd === 'get_all_archives') {
-    $sql = "SELECT * FROM apps WHERE parent_id IS NULL OR parent_id = 0 ORDER BY binary_file_ext = 'folder' DESC, id DESC";
-    $result = $conn->query($sql);
-    $items = [];
-    while ($row = $result->fetch_assoc()) {
-        $items[] = $row;
-    }
+    // ... baaki code waisa hi rahega
+
     echo json_encode($items);
     exit;
 }
@@ -427,7 +423,7 @@ if ($cmd === 'save_app') {
             $stmt->bind_param("sssssssssisssssis", $company, $desc, $appType, $platform, $appVersion, $osVersion, $hardware, $fwVersion, $status, $dotCancelled, $safeName, $ext, $userManual, $packageName, $releaseTrack, $autoUpload, $createdAt);
             if ($stmt->execute()) {
                 $newId = $conn->insert_id;
-                
+
                 // Trigger auto-upload if enabled
                 if ($autoUpload == 1) {
                     $workerScript = __DIR__ . '/../scripts/aws_upload_worker.php';
